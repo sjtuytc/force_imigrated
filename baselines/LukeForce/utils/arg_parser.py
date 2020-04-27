@@ -21,11 +21,13 @@ def loss_class(class_name):
            class_name, loss.__all__))
     return getattr(loss, class_name)
 
+
 def model_class(class_name):
     if class_name not in models.__all__:
         raise argparse.ArgumentTypeError("Invalid model {}; choices: {}".format(
             class_name, models.__all__))
     return getattr(models, class_name)
+
 
 def environment_class(class_name):
     if class_name not in environments.__all__:
@@ -33,13 +35,12 @@ def environment_class(class_name):
             class_name, environments.__all__))
     return getattr(environments, class_name)
 
+
 def dataset_class(class_name):
     if class_name not in datasets.__all__:
         raise argparse.ArgumentTypeError("Invalid environment {}; choices: {}".format(
             class_name, datasets.__all__))
     return getattr(datasets, class_name)
-
-
 
 
 def setup_logging(filepath, verbose):
@@ -90,15 +91,16 @@ def parse_args():
     parser.add_argument('--model', '-a', metavar='ARCH', default='SimpleModel', help='model to use for training/test.', type=model_class)
     parser.add_argument('--workers', default=1, type=int, metavar='N', help='number of data loading workers')
     parser.add_argument('--epochs', default=100, type=int, metavar='N', help='number of total epochs to run')
-    parser.add_argument('-b', '--batch-size', default=1, type=int, metavar='N', help='mini-batch size (default: 256)')
+    parser.add_argument('-b', '--batch-size', default=1, type=int, metavar='N', help='mini-batch size (default: 1)')
     parser.add_argument('--break-batch', default=64, type=int, help='break batches with this factor to fit to memory.')
     parser.add_argument('--lrm', default=0.1, type=float, help='learning rate multiplier.')
-    parser.add_argument('--base-lr', default=0.001, type=float, help='base learning rate ')
+    parser.add_argument('--base-lr', default=0.001, type=float, help='base learning rate')
     parser.add_argument('--reload', default=None, type=str, metavar='PATH', help='path to latest checkpoint')
     parser.add_argument('--reload_dir', default=None, type=str, metavar='PATH')
     parser.add_argument('--reload_from_title', default=None, type=str)
     parser.add_argument('--reload_from_title_epoch', default=-1, type=int)
-    parser.add_argument('--no-strict', action='store_false', dest='strict', help='Loading the weights from another model.')
+    parser.add_argument('--no-strict', action='store_false', dest='strict',
+                        help='Loading the weights from another model.')
     parser.add_argument('--step_size', default=200, type=int, help='Step size for reducing the learning rate')
     parser.add_argument('--dropout_ratio', default=0.3, type=float)
     parser.add_argument('--seed', default=10, type=int)
@@ -126,9 +128,8 @@ def parse_args():
     parser.add_argument('--no-pretrain', action='store_false', dest='pretrain')
     parser.add_argument('--object_list', default=['072-a_toy_airplane'], nargs='+', type=str, help='options: ALL or ycb objects')
     parser.add_argument('--gpu-ids', type=int, default=-1, nargs='+', help='GPUs to use [-1 CPU only] (default: -1)')
-
-
     args = parser.parse_args()
+
 
     args.logdir = args.data
 
@@ -145,7 +146,7 @@ def parse_args():
     logging_path = os.path.join(args.logdir, 'runs/')
     local_start_time_str = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime(time.time()))
     log_title = args.title + '_' + local_start_time_str
-    log_dir = os.path.join(logging_path,  log_title)
+    log_dir = os.path.join(logging_path, log_title)
     args.qualitative_dir = os.path.join(args.logdir, 'qualitative_plots', log_title)
 
     timestamp = str(datetime.datetime.now()).replace(' ', '#').replace(':', '.')
@@ -161,7 +162,7 @@ def parse_args():
         if args.object_list == ['ALL']:
             args.object_list = CHOSEN_OBJECTS
         else:
-            raise Exception ('Not implemented yet')
+            raise Exception('Not implemented yet')
 
     logging.info('Command: {}'.format(' '.join(sys.argv)))
     logging.info('Command line arguments parsed: {}'.format(

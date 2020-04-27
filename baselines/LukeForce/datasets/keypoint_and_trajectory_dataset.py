@@ -28,10 +28,12 @@ class DatasetWAugmentation(data.Dataset):
         clip_to_contact_point_json_file = os.path.join(self.root_dir, 'annotations', 'clean_clip_to_contact_point.json')
         self.clip_to_contact_point = _load_transformation_files(clip_to_contact_point_json_file)
 
-        time_to_obj_state_fps_json_file = os.path.join(self.root_dir, 'annotations', 'time_to_obj_state_fps_{}.json'.format(int(self.fps)))
+        time_to_obj_state_fps_json_file = os.path.join(self.root_dir, 'annotations', 'time_to_obj_state_fps_{}.json'.
+                                                       format(int(self.fps)))
         self.time_to_obj_state_fps = _load_transformation_files(time_to_obj_state_fps_json_file)
 
-        time_to_keypoint_fps_json_file = os.path.join(self.root_dir, 'annotations', 'time_to_keypoint_fps_{}.json'.format(self.fps))
+        time_to_keypoint_fps_json_file = os.path.join(self.root_dir, 'annotations', 'time_to_keypoint_fps_{}.json'.
+                                                      format(self.fps))
         self.time_to_keypoint_fps = _load_transformation_files(time_to_keypoint_fps_json_file)
 
         if train:
@@ -42,7 +44,8 @@ class DatasetWAugmentation(data.Dataset):
             cleaned_start_states_json_file = os.path.join(self.root_dir, 'annotations', 'test_cleaned_start_states.json')
         self.cleaned_start_states = _load_transformation_files(cleaned_start_states_json_file)['timestamps']
 
-        object_paths = {obj: os.path.join(self.root_dir, 'objects_16k', obj, 'google_16k', 'textured.urdf') for obj in self.object_list}
+        object_paths = {obj: os.path.join(self.root_dir, 'objects_16k', obj, 'google_16k', 'textured.urdf') for obj
+                        in self.object_list}
 
         self.fps = args.fps
         self.subsample_rate = args.subsample_rate
@@ -106,7 +109,8 @@ class DatasetWAugmentation(data.Dataset):
 
             for ind in range(len(all_times_for_this_obj_sorted) - self.sequence_length * self.subsample_rate):
 
-                sequence = [str(all_times_for_this_obj_sorted[i]) for i in range(ind, ind + self.sequence_length * self.subsample_rate, self.subsample_rate)]
+                sequence = [str(all_times_for_this_obj_sorted[i])
+                            for i in range(ind, ind + self.sequence_length * self.subsample_rate, self.subsample_rate)]
 
                 clip_index = self.get_unique_clip_index(sequence, obj)
 

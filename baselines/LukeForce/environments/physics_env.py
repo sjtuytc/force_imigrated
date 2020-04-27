@@ -44,7 +44,6 @@ class PhysicsEnv(BaseBulletEnv):
         self.qualitative_size = args.qualitative_size
 
     def reset(self):
-
         self.terminated = 0
         self._p.resetSimulation()
         self._p.setRealTimeSimulation(0)
@@ -53,8 +52,8 @@ class PhysicsEnv(BaseBulletEnv):
         if self.gravity:
             self._p.setGravity(GRAVITY_VALUE[0], GRAVITY_VALUE[1], GRAVITY_VALUE[2])
 
-        self.object_of_interest_id, self.vertex_points, self.faces, self.middle_points, self.vertex_to_faces_dict, self.center_of_mass = self.initiate_object(
-            self.object_path)
+        self.object_of_interest_id, self.vertex_points, self.faces, self.middle_points, self.vertex_to_faces_dict, \
+        self.center_of_mass = self.initiate_object(self.object_path)
         self.center_of_mass = torch.Tensor(self.center_of_mass)
         self.vertex_points = self.vertex_points - self.center_of_mass
         if self.gpu_ids != -1:
@@ -73,7 +72,9 @@ class PhysicsEnv(BaseBulletEnv):
         for vert_ind in range(len(vertices)):
             face = vertex_to_face_dict[vert_ind][0].tolist()
             vertices_on_this_face = vertices[face]
-            surface_normal = torch.cross((vertices_on_this_face[1] - vertices_on_this_face[0]) * 10, (vertices_on_this_face[2] - vertices_on_this_face[0]) * 10)  # To avoid numerical errors because these are all very close
+            surface_normal = torch.cross((vertices_on_this_face[1] - vertices_on_this_face[0]) * 10,
+                                         (vertices_on_this_face[2] - vertices_on_this_face[0]) * 10)
+            # To avoid numerical errors because these are all very close
             surface_normal = surface_normal / surface_normal.norm()
             all_normals.append(surface_normal)
         normal_end_vec = torch.stack(all_normals, dim=0)
@@ -96,9 +97,11 @@ class PhysicsEnv(BaseBulletEnv):
             return 0, None
 
     def initiate_object(self, object_path):
-        unique_id = self._p.loadURDF(object_path, basePosition=[0.5, 0.5, 0.5], baseOrientation=[1, 0, 0, 0], globalScaling=self.scale)
+        unique_id = self._p.loadURDF(object_path, basePosition=[0.5, 0.5, 0.5], baseOrientation=[1, 0, 0, 0],
+                                     globalScaling=self.scale)
         center_of_mass = self._p.getDynamicsInfo(bodyUniqueId=unique_id, linkIndex=-1)[3]
-        self._p.changeDynamics(bodyUniqueId=unique_id, linkIndex=-1, mass=0.02, spinningFriction=0.001)  # This is just to make sure is the same as the block
+        self._p.changeDynamics(bodyUniqueId=unique_id, linkIndex=-1, mass=0.02, spinningFriction=0.001)
+        # This is just to make sure is the same as the block
         with open(object_path, 'r') as f:
             lines = [l for l in f]
             simple_convex_line = [l for l in lines if '_convex' in l]
@@ -114,7 +117,8 @@ class PhysicsEnv(BaseBulletEnv):
             for f in face:
                 vertex_to_faces_dict.setdefault(f, [])
                 vertex_to_faces_dict[f].append(face)
-        return unique_id, torch.Tensor(vertices) * self.scale, torch.Tensor(faces) * self.scale, torch.Tensor(middles_pts) * self.scale, vertex_to_faces_dict, center_of_mass
+        return unique_id, torch.Tensor(vertices) * self.scale, torch.Tensor(faces) * self.scale, \
+               torch.Tensor(middles_pts) * self.scale, vertex_to_faces_dict, center_of_mass
 
     def reset_base_with_normal_quaternion(self, bodyUniqueId, posObj, ornObj):
         assert torch.abs(1 - ((ornObj).norm(2))) < 1e-5
@@ -180,7 +184,8 @@ class PhysicsEnv(BaseBulletEnv):
         objectPos, objectOr = self._p.getBasePositionAndOrientation(object_num)
         objectOr = quaternion_bullet2normal(objectOr)
         velocity, omega = self._p.getBaseVelocity(bodyUniqueId=object_num)
-        return EnvState(object_name=self.object_name, position=objectPos, rotation=objectOr, velocity=velocity, omega=omega)
+        return EnvState(object_name=self.object_name, position=objectPos, rotation=objectOr, velocity=velocity,
+                        omega=omega)
 
     def init_location_and_apply_force(self, forces, initial_state, object_num, list_of_contact_points):
 
@@ -226,15 +231,19 @@ class PhysicsEnv(BaseBulletEnv):
             force_to_apply = forces[cp_ind].force
             contact_point = converted_cp[cp_ind]
 
-            unoriented_surface_normal = self.all_surface_normals[list_of_contact_points[cp_ind]]  # Remember this is not a copy this is the real one, DO NOT CHANGE THIS
-            surface_normal_end_begin = self.convert_set_of_vertices(unoriented_surface_normal, latest_translation, latest_rotation_mat)  # checked this visually
+            unoriented_surface_normal = self.all_surface_normals[list_of_contact_points[cp_ind]]
+            # Remember this is not a copy this is the real one, DO NOT CHANGE THIS
+            surface_normal_end_begin = self.convert_set_of_vertices(unoriented_surface_normal, latest_translation,
+                                                                    latest_rotation_mat)  # checked this visually
             surface_normal = surface_normal_end_begin[1] - surface_normal_end_begin[0]
             d = -(contact_point * surface_normal).sum()
             center_situation = (latest_state.position * surface_normal).sum() + d
             if center_situation > 0:
                 surface_normal *= -1
 
-            force_success, force_value = self.apply_force_to_obj(force_to_apply=force_to_apply, contact_point=contact_point, surface_normal=surface_normal, object_num=object_num)
+            force_success, force_value = \
+                self.apply_force_to_obj(force_to_apply=force_to_apply, contact_point=contact_point,
+                                        surface_normal=surface_normal, object_num=object_num)
 
             list_of_force_success.append(force_success)
             list_of_force_location.append(contact_point)
@@ -260,10 +269,12 @@ class PhysicsEnv(BaseBulletEnv):
             force_success = 0
             force_applied = force_to_apply
         else:
-            hit_, force_applied = self.check_force_hit(contact_point=poc, force_value=force_to_apply, surface_normal=surface_normal)
+            hit_, force_applied = self.check_force_hit(contact_point=poc, force_value=force_to_apply,
+                                                       surface_normal=surface_normal)
             force_success = hit_
 
             if hit_ > 0:
-                self._p.applyExternalForce(objectUniqueId=object_num, linkIndex=-1, posObj=contact_point, forceObj=force_to_apply * self.force_multiplier, flags=self._p.WORLD_FRAME)
+                self._p.applyExternalForce(objectUniqueId=object_num, linkIndex=-1, posObj=contact_point,
+                                           forceObj=force_to_apply * self.force_multiplier, flags=self._p.WORLD_FRAME)
 
         return force_success, force_applied

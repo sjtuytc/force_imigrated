@@ -11,8 +11,7 @@ from solvers import metrics
 
 
 class BaselineRegressForce(BaseModel):
-    metric = [
-    ]
+    metric = []
 
     def __init__(self, args):
         super(BaselineRegressForce, self).__init__(args)

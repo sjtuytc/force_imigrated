@@ -72,7 +72,8 @@ class NoModelGTForceBaseline(BaseModel):
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
 
-            env_state = EnvState(object_name=object_name, rotation=initial_rotation[0], position=initial_position[0], velocity=None, omega=None)
+            env_state = EnvState(object_name=object_name, rotation=initial_rotation[0], position=initial_position[0],
+                                 velocity=None, omega=None)
             resulting_force_success = []
             forces_directions = []
             all_force_applied = []
@@ -85,7 +86,8 @@ class NoModelGTForceBaseline(BaseModel):
                 assert force.shape[0] == (self.number_of_cp * 3)
 
                 # initial initial_velocity is whatever it was the last frame, note that the gradients are not backproped here
-                env_state, force_success, force_applied = self.environment_layer.apply(self.environment, env_state.toTensor(), force, contact_points)
+                env_state, force_success, force_applied = \
+                    self.environment_layer.apply(self.environment, env_state.toTensor(), force, contact_points)
                 env_state = EnvState.fromTensor(env_state)
 
                 resulting_position.append(env_state.position)
@@ -100,7 +102,8 @@ class NoModelGTForceBaseline(BaseModel):
             resulting_position = resulting_position.unsqueeze(0)  # adding batchsize back because we need it in the loss
             resulting_rotation = resulting_rotation.unsqueeze(0)  # adding batchsize back because we need it in the loss
 
-            all_keypoints = get_keypoint_projection(object_name, resulting_position, resulting_rotation, self.all_objects_keypoint_tensor[object_name])
+            all_keypoints = get_keypoint_projection(object_name, resulting_position,
+                                                    resulting_rotation, self.all_objects_keypoint_tensor[object_name])
             all_keypoints = all_keypoints.unsqueeze(0)  # adding batchsize back because we need it in the loss
 
             output = {

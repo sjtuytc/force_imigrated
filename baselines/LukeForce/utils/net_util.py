@@ -220,7 +220,9 @@ class CPGradientLayer(Function):
         finite_diff_success_flags = []
 
         with torch.no_grad():
-            env_state, force_success_flag, force_that_applied = environment.init_location_and_apply_force(initial_state=initial_state, forces=forces, list_of_contact_points=list_of_contact_points)
+            env_state, force_success_flag, force_that_applied = \
+                environment.init_location_and_apply_force(initial_state=initial_state, forces=forces,
+                                                          list_of_contact_points=list_of_contact_points)
             f_x_env_state_tensor = env_state.toTensor()
 
         no_grad_on = not (True in ctx.needs_input_grad)
@@ -243,7 +245,9 @@ class CPGradientLayer(Function):
 
                     changed_contact_point = changed_contact_point.view(5, 3)
 
-                    env_state_h, _, _ = environment.init_location_and_apply_force(initial_state=initial_state, forces=forces, list_of_contact_points=changed_contact_point)
+                    env_state_h, _, _ = environment.\
+                        init_location_and_apply_force(initial_state=initial_state, forces=forces,
+                                                      list_of_contact_points=changed_contact_point)
 
                     manual_tweaks_cp.append((env_state_h.toTensor() - f_x_env_state_tensor) / (tweak_value_cp))
 
@@ -262,7 +266,9 @@ class CPGradientLayer(Function):
 
                     changed_force = ForceValOnly.fromForceArray(changed_force.view(environment.number_of_cp, -1))
 
-                    env_state_h, force_success_flag_h, force_that_applied_h = environment.init_location_and_apply_force(initial_state=initial_state, forces=changed_force, list_of_contact_points=list_of_contact_points)
+                    env_state_h, force_success_flag_h, force_that_applied_h = environment.\
+                        init_location_and_apply_force(initial_state=initial_state, forces=changed_force,
+                                                      list_of_contact_points=list_of_contact_points)
 
                     manual_tweaks_force.append((env_state_h.toTensor() - f_x_env_state_tensor) / (tweak_value_force))
 
@@ -286,7 +292,9 @@ class CPGradientLayer(Function):
 
                     changed_state[arg_ind] += tweak_value_state
 
-                    env_state_h, force_success_flag_h, force_that_applied_h = environment.init_location_and_apply_force(initial_state=EnvState.fromTensor(changed_state), forces=forces, list_of_contact_points=list_of_contact_points)
+                    env_state_h, force_success_flag_h, force_that_applied_h = \
+                        environment.init_location_and_apply_force(initial_state=EnvState.fromTensor(changed_state),
+                                                                  forces=forces, list_of_contact_points=list_of_contact_points)
 
                     manual_tweaks_initial_state.append((env_state_h.toTensor() - f_x_env_state_tensor) / (tweak_value_state))
 

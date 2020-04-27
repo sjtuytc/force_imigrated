@@ -1,15 +1,17 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from .base_model import BaseModel
 from utils.net_util import input_embedding_net, EnvWHumanCpFiniteDiffFast, combine_block_w_do
-
 from torchvision.models.resnet import resnet18
 from solvers import metrics
+from utils.projection_utils import get_all_objects_keypoint_tensors
 from utils.environment_util import EnvState
-from utils.projection_utils import get_keypoint_projection, get_all_objects_keypoint_tensors
+from utils.projection_utils import get_keypoint_projection
+from utils.constants import DEFAULT_IMAGE_SIZE
 
 
-class ImageAndCPInputKPOutModel(BaseModel):
+class PredictInitPoseAndForce(BaseModel):
     metric = [
         metrics.ObjRotationMetric,
         metrics.ObjPositionMetric,
@@ -17,7 +19,7 @@ class ImageAndCPInputKPOutModel(BaseModel):
     ]
 
     def __init__(self, args):
-        super(ImageAndCPInputKPOutModel, self).__init__(args)
+        super(PredictInitPoseAndForce, self).__init__(args)
         self.environment_layer = EnvWHumanCpFiniteDiffFast
         self.loss_function = args.loss
         self.relu = nn.LeakyReLU()
@@ -41,6 +43,9 @@ class ImageAndCPInputKPOutModel(BaseModel):
 
         self.image_embed = combine_block_w_do(512, 64, args.dropout_ratio)
 
+        predict_initial_pose_size = torch.Tensor([(2 + 3) * 10, 100, 3 + 4])
+        self.predict_initial_pose = input_embedding_net(predict_initial_pose_size.long().tolist(), dropout=args.dropout_ratio)
+
         input_object_embed_size = torch.Tensor([3 + 4, 100, self.object_feature_size])
         self.input_object_embed = input_embedding_net(input_object_embed_size.long().tolist(), dropout=args.dropout_ratio)
         state_embed_size = torch.Tensor([EnvState.total_size + self.cp_feature_size, 100, self.object_feature_size])
@@ -53,7 +58,6 @@ class ImageAndCPInputKPOutModel(BaseModel):
         forces_directions_decoder_size = torch.Tensor([self.hidden_size, 100, (3) * self.number_of_cp])
 
         self.forces_directions_decoder = input_embedding_net(forces_directions_decoder_size.long().tolist(), dropout=args.dropout_ratio)
-        self.force_clamping = args.force_clamping
 
         assert args.batch_size == 1, 'have not been implemented yet, because of the environment'
 
@@ -63,6 +67,8 @@ class ImageAndCPInputKPOutModel(BaseModel):
         if args.gpu_ids != -1:
             for obj, val in self.all_objects_keypoint_tensor.items():
                 self.all_objects_keypoint_tensor[obj] = val.cuda()
+            global DEFAULT_IMAGE_SIZE
+            DEFAULT_IMAGE_SIZE = DEFAULT_IMAGE_SIZE.cuda()
 
     def loss(self, args):
         return self.loss_function(args)
@@ -87,36 +93,48 @@ class ImageAndCPInputKPOutModel(BaseModel):
 
         return x
 
-
     def forward(self, input, target):
+        object_name = input['object_name']
+        assert len(object_name) == 1
+        object_name = object_name[0]
 
-        initial_position = input['initial_position']
-        initial_rotation = input['initial_rotation']
+        initial_keypoint = input['initial_keypoint']
+        initial_keypoint = initial_keypoint / DEFAULT_IMAGE_SIZE
+        initial_keypoint = initial_keypoint.view(1, 2 * 10)
+
+        object_points = self.all_objects_keypoint_tensor[object_name].view(1, 3 * 10)
+
         rgb = input['rgb']
         contact_points = input['contact_points']
         assert contact_points.shape[0] == 1
         contact_points = contact_points.squeeze(0)
 
-        contact_point_as_input = input['contact_points'].view(1, 3 * 5) # Batchsize , 3 * number of contact points
+        contact_point_as_input = input['contact_points'].view(1, 3 * 5)  # Batchsize , 3 * number of contact points
         batch_size, seq_len, c, w, h = rgb.shape
-
 
         image_features = self.resnet_features(rgb)
         image_features = self.image_embed(image_features.view(batch_size * seq_len, 512, 7, 7)).view(batch_size, seq_len, 64 * 7 * 7)
 
-        object_name = input['object_name']
-        assert len(object_name) == 1
-        object_name = object_name[0]
+        initial_state = self.predict_initial_pose(torch.cat([initial_keypoint, object_points], dim=-1)).view(1, 3 + 4)
+        initial_position = initial_state[:, :3]
+        initial_rotation = initial_state[:, 3:]
+        initial_rotation = F.normalize(initial_rotation, dim=-1)
+
+        # Just for visualization purposes
+        input['initial_rotation'] = initial_rotation
+        input['initial_position'] = initial_position
 
         initial_object_features = self.input_object_embed(torch.cat([initial_position, initial_rotation], dim=-1))
-        object_features = initial_object_features.unsqueeze(1).repeat(1, self.sequence_length, 1) #add a dimension for sequence length and then repeat that
+        object_features = initial_object_features.unsqueeze(1).repeat(1, self.sequence_length, 1)
+        # add a dimension for sequence length and then repeat that
 
         input_embedded = torch.cat([image_features, object_features], dim=-1)
         embedded_sequence, (hidden, cell) = self.lstm_encoder(input_embedded)
 
-
-        last_hidden = hidden.view(self.num_layers, 1, 1, self.hidden_size)[-1, -1, :, :] #num_layers, num direction, batchsize, hidden and then take the last hidden layer
-        last_cell = cell.view(self.num_layers, 1, 1, self.hidden_size)[-1, -1, :, :]  # num_layers, num direction, batchsize, cell and then take the last hidden layer
+        last_hidden = hidden.view(self.num_layers, 1, 1, self.hidden_size)[-1, -1, :, :]
+        # num_layers, num direction, batchsize, hidden and then take the last hidden layer
+        last_cell = cell.view(self.num_layers, 1, 1, self.hidden_size)[-1, -1, :, :]
+        # num_layers, num direction, batchsize, cell and then take the last hidden layer
 
         hn = last_hidden
         cn = last_cell
@@ -144,12 +162,11 @@ class ImageAndCPInputKPOutModel(BaseModel):
             assert force.shape[0] == (self.number_of_cp * 3)
 
             # Cap forces
-            # Prevent force from diverging
-            force = force.clamp(-self.force_clamping, self.force_clamping)
-
+            # think about this more
+            force = force.clamp(-1., 1.)
 
             # initial initial_velocity is whatever it was the last frame, note that the gradients are not backproped here
-            env_state, force_success, force_applied = self.environment_layer.apply(self.environment, env_state.toTensor(), force,contact_points)
+            env_state, force_success, force_applied = self.environment_layer.apply(self.environment, env_state.toTensor(), force, contact_points)
             env_state = EnvState.fromTensor(env_state)
 
             resulting_position.append(env_state.position)
@@ -157,7 +174,6 @@ class ImageAndCPInputKPOutModel(BaseModel):
             resulting_force_success.append(force_success)
             forces_directions.append(force.view(self.number_of_cp, 3))
             all_force_applied.append(force_applied)
-
 
         resulting_position = torch.stack(resulting_position, dim=0)
         resulting_rotation = torch.stack(resulting_rotation, dim=0)
@@ -184,7 +200,6 @@ class ImageAndCPInputKPOutModel(BaseModel):
         }
 
         target['object_name'] = input['object_name']
-
 
         return output, target
 

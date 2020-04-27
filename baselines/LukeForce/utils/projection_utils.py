@@ -5,6 +5,7 @@ import torch
 from utils.quaternion_util import quaternion_to_rotation_matrix
 import os
 
+
 def _get_object_keypoints(object_name, root_path):
     path = os.path.join(root_path, ALL_OBJECT_KEYPOINT_NAME[object_name])
     with open(path) as file:
@@ -35,6 +36,7 @@ def project_points(points, rotation_mat, translation_mat, camera_intr, distortio
     v = camera_intr[1, 1] * ypp + camera_intr[1, 2]
     return torch.stack([u, v], dim=-1)
 
+
 def reverse_translation_transformation(translation_mat, object_name):
     center_of_mass = OBJECT_NAME_TO_CENTER_OF_MASS[object_name]
     if center_of_mass.device != translation_mat.device:
@@ -42,6 +44,7 @@ def reverse_translation_transformation(translation_mat, object_name):
     scale = OBJECT_TO_SCALE[object_name]
     translation_mat = translation_mat / scale + center_of_mass.detach()
     return translation_mat
+
 
 def get_keypoint_projection(object_name, resulting_positions, resulting_rotations, keypoints):
     batch_size, seq_len, size = resulting_positions.shape
@@ -60,6 +63,7 @@ def get_keypoint_projection(object_name, resulting_positions, resulting_rotation
         result = project_points(keypoints, rotation_mat, translation_mat, CAMERA_INTRINS_UNNORM, DISTORTION)
         all_projections.append(result)
     return torch.stack(all_projections, dim=0)
+
 
 def put_a_dot_on_image(image, point, color, SIZE_OF_DOT):
     point = torch.round(point).long() + 0. #Copy point

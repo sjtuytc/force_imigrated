@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from .base_model import BaseModel
-from utils.net_util import input_embedding_net, combine_block_w_do, CPGradientLayer
+from utils.net_util import input_embedding_net, EnvWHumanCpFiniteDiffFast, combine_block_w_do
 
 from torchvision.models.resnet import resnet18
 from solvers import metrics
@@ -9,24 +9,22 @@ from utils.environment_util import EnvState
 from utils.projection_utils import get_keypoint_projection, get_all_objects_keypoint_tensors
 
 
-class SeparateTowerModel(BaseModel):
+class ImageAndCPInputKPOutModel(BaseModel):
     metric = [
         metrics.ObjRotationMetric,
         metrics.ObjPositionMetric,
         metrics.ObjKeypointMetric,
-        metrics.CPMetric,
     ]
 
     def __init__(self, args):
-        super(SeparateTowerModel, self).__init__(args)
-        self.environment_layer = CPGradientLayer
+        super(ImageAndCPInputKPOutModel, self).__init__(args)
+        self.environment_layer = EnvWHumanCpFiniteDiffFast
         self.loss_function = args.loss
         self.relu = nn.LeakyReLU()
         self.number_of_cp = args.number_of_cp
         self.environment = args.instance_environment
         self.sequence_length = args.sequence_length
         self.gpu_ids = args.gpu_ids
-
 
         self.feature_extractor = resnet18(pretrained=args.pretrain)
         del self.feature_extractor.fc
@@ -37,30 +35,25 @@ class SeparateTowerModel(BaseModel):
         self.object_feature_size = 512
         self.hidden_size = 512
         self.num_layers = 3
+        # self.input_feature_size = self.image_feature_size + self.object_feature_size
         self.input_feature_size = self.object_feature_size
         self.cp_feature_size = self.number_of_cp * 3
 
         self.image_embed = combine_block_w_do(512, 64, args.dropout_ratio)
-        self.contact_point_image_embed = combine_block_w_do(512, 64, args.dropout_ratio)
 
         input_object_embed_size = torch.Tensor([3 + 4, 100, self.object_feature_size])
         self.input_object_embed = input_embedding_net(input_object_embed_size.long().tolist(), dropout=args.dropout_ratio)
-        self.contact_point_input_object_embed = input_embedding_net(input_object_embed_size.long().tolist(), dropout=args.dropout_ratio)
-
         state_embed_size = torch.Tensor([EnvState.total_size + self.cp_feature_size, 100, self.object_feature_size])
         self.state_embed = input_embedding_net(state_embed_size.long().tolist(), dropout=args.dropout_ratio)
 
         self.lstm_encoder = nn.LSTM(input_size=self.hidden_size + 64 * 7 * 7, hidden_size=self.hidden_size, batch_first=True, num_layers=self.num_layers)
-
-        self.contact_point_encoder = nn.LSTM(input_size=self.hidden_size + 64 * 7 * 7, hidden_size=self.hidden_size, batch_first=True, num_layers=self.num_layers)
-        contact_point_decoder_size = torch.Tensor([self.hidden_size, 100, (3) * self.number_of_cp])
-        self.contact_point_decoder = input_embedding_net(contact_point_decoder_size.long().tolist(), dropout=args.dropout_ratio)
 
         self.lstm_decoder = nn.LSTMCell(input_size=self.hidden_size * 2, hidden_size=self.hidden_size)
 
         forces_directions_decoder_size = torch.Tensor([self.hidden_size, 100, (3) * self.number_of_cp])
 
         self.forces_directions_decoder = input_embedding_net(forces_directions_decoder_size.long().tolist(), dropout=args.dropout_ratio)
+        self.force_clamping = args.force_clamping
 
         assert args.batch_size == 1, 'have not been implemented yet, because of the environment'
 
@@ -94,38 +87,36 @@ class SeparateTowerModel(BaseModel):
 
         return x
 
+
     def forward(self, input, target):
 
         initial_position = input['initial_position']
         initial_rotation = input['initial_rotation']
         rgb = input['rgb']
+        contact_points = input['contact_points']
+        assert contact_points.shape[0] == 1
+        contact_points = contact_points.squeeze(0)
+
+        contact_point_as_input = input['contact_points'].view(1, 3 * 5) # Batchsize , 3 * number of contact points
         batch_size, seq_len, c, w, h = rgb.shape
+
+
+        image_features = self.resnet_features(rgb)
+        image_features = self.image_embed(image_features.view(batch_size * seq_len, 512, 7, 7)).view(batch_size, seq_len, 64 * 7 * 7)
+
         object_name = input['object_name']
         assert len(object_name) == 1
         object_name = object_name[0]
 
-        image_features = self.resnet_features(rgb)
+        initial_object_features = self.input_object_embed(torch.cat([initial_position, initial_rotation], dim=-1))
+        object_features = initial_object_features.unsqueeze(1).repeat(1, self.sequence_length, 1) #add a dimension for sequence length and then repeat that
 
-        # Contact point prediction tower
-        image_features_contact_point = self.contact_point_image_embed(image_features.view(batch_size * seq_len, 512, 7, 7)).view(batch_size, seq_len, 64 * 7 * 7)
-        initial_object_features_contact_point = self.contact_point_input_object_embed(torch.cat([initial_position, initial_rotation], dim=-1))
-        object_features_contact_point = initial_object_features_contact_point.unsqueeze(1).repeat(1, self.sequence_length, 1)  # add a dimension for sequence length and then repeat that
-        # Predict contact point
-        input_embedded_contact_point = torch.cat([image_features_contact_point, object_features_contact_point], dim=-1)
-        embedded_sequence_contact_point, (_, _) = self.contact_point_encoder(
-            input_embedded_contact_point)
-        contact_points_prediction = self.contact_point_decoder(embedded_sequence_contact_point).view(batch_size, seq_len, self.number_of_cp, 3)[:, -1, :, :]  # Predict contact point for each image
+        input_embedded = torch.cat([image_features, object_features], dim=-1)
+        embedded_sequence, (hidden, cell) = self.lstm_encoder(input_embedded)
 
-        # Force prediction tower
-        image_features_force = self.image_embed(image_features.view(batch_size * seq_len, 512, 7, 7)).view(batch_size, seq_len, 64 * 7 * 7)
-        initial_object_features_force = self.input_object_embed(torch.cat([initial_position, initial_rotation], dim=-1))
-        object_features_force = initial_object_features_force.unsqueeze(1).repeat(1, self.sequence_length, 1)  # add a dimension for sequence length and then repeat that
 
-        input_embedded_force = torch.cat([image_features_force, object_features_force], dim=-1)
-        embedded_sequence_force, (hidden_force, cell_force) = self.lstm_encoder(input_embedded_force)
-
-        last_hidden = hidden_force.view(self.num_layers, 1, 1, self.hidden_size)[-1, -1, :, :]  # num_layers, num direction, batchsize, hidden and then take the last hidden layer
-        last_cell = cell_force.view(self.num_layers, 1, 1, self.hidden_size)[-1, -1, :, :]  # num_layers, num direction, batchsize, cell and then take the last hidden layer
+        last_hidden = hidden.view(self.num_layers, 1, 1, self.hidden_size)[-1, -1, :, :] #num_layers, num direction, batchsize, hidden and then take the last hidden layer
+        last_cell = cell.view(self.num_layers, 1, 1, self.hidden_size)[-1, -1, :, :]  # num_layers, num direction, batchsize, cell and then take the last hidden layer
 
         hn = last_hidden
         cn = last_cell
@@ -140,11 +131,10 @@ class SeparateTowerModel(BaseModel):
 
         for seq_ind in range(self.sequence_length - 1):
             prev_location = env_state.toTensorCoverName().unsqueeze(0)
-            contact_point_as_input = contact_points_prediction.view(1, 3 * 5)
 
             prev_state_and_cp = torch.cat([prev_location, contact_point_as_input], dim=-1)
             prev_state_embedded = self.state_embed(prev_state_and_cp)
-            next_state_embedded = embedded_sequence_force[:, seq_ind + 1]
+            next_state_embedded = embedded_sequence[:, seq_ind + 1]
             input_lstm_cell = torch.cat([prev_state_embedded, next_state_embedded], dim=-1)
 
             (hn, cn) = self.lstm_decoder(input_lstm_cell, (hn, cn))
@@ -153,9 +143,14 @@ class SeparateTowerModel(BaseModel):
             force = force.squeeze(0)
             assert force.shape[0] == (self.number_of_cp * 3)
 
-            # initial initial_velocity is whatever it was the last frame, note that the gradients are not backproped here
-            env_state, force_success, force_applied = self.environment_layer.apply(self.environment, env_state.toTensor(), force, contact_point_as_input.squeeze(0))
+            # Cap forces
+            # Prevent force from diverging
+            force = force.clamp(-self.force_clamping, self.force_clamping)
 
+
+            # initial initial_velocity is whatever it was the last frame, note that the gradients are not backproped here
+            env_state, force_success, force_applied = self.environment_layer.apply(
+                self.environment, env_state.toTensor(), force, contact_points)
             env_state = EnvState.fromTensor(env_state)
 
             resulting_position.append(env_state.position)
@@ -163,6 +158,7 @@ class SeparateTowerModel(BaseModel):
             resulting_force_success.append(force_success)
             forces_directions.append(force.view(self.number_of_cp, 3))
             all_force_applied.append(force_applied)
+
 
         resulting_position = torch.stack(resulting_position, dim=0)
         resulting_rotation = torch.stack(resulting_rotation, dim=0)
@@ -179,8 +175,6 @@ class SeparateTowerModel(BaseModel):
         all_keypoints = get_keypoint_projection(object_name, resulting_position, resulting_rotation, self.all_objects_keypoint_tensor[object_name])
         all_keypoints = all_keypoints.unsqueeze(0)  # adding batchsize back because we need it in the loss
 
-        contact_points_prediction = contact_points_prediction.unsqueeze(1).repeat(1, seq_len, 1, 1)
-
         output = {
             'keypoints': all_keypoints,
             'rotation': resulting_rotation,
@@ -188,10 +182,10 @@ class SeparateTowerModel(BaseModel):
             'force_success_flag': resulting_force_success,
             'force_applied': all_force_applied,
             'force_direction': forces_directions,  # batch size x seq len -1 x number of cp x 3
-            'contact_points': contact_points_prediction,
         }
 
         target['object_name'] = input['object_name']
+
 
         return output, target
 

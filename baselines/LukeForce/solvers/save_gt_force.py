@@ -24,8 +24,8 @@ def save_gt_force(model, loss, data_loader, epoch, args):
                 for feature in input:
                     value = input[feature]
                     if issubclass(type(value), torch.Tensor):
-                        input[feature] = value.cuda(async=True)
-                target = {feature: target[feature].cuda(async=True) for feature in target.keys()}
+                        input[feature] = value.cuda(non_blocking=True)
+                target = {feature: target[feature].cuda(non_blocking=True) for feature in target.keys()}
 
             # Forward pass
             output, target_output = model(input, target)

@@ -14,7 +14,6 @@ class MultipleObjectWrapper:
         for obj in self.object_paths:
             self.list_of_envs[obj] = self.environment_type(args, self.object_paths[obj], obj)
 
-
     def reset(self):
         for obj in self.object_paths:
             self.list_of_envs[obj].reset()
