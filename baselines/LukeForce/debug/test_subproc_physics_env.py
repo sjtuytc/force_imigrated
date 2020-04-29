@@ -1,0 +1,62 @@
+from utils.arg_parser import parse_args
+import random
+import torch
+import logging
+import os
+import time
+from environments.subproc_physics_env import SubprocPhysicsEnv
+from utils.environment_util import ForceValOnly, EnvState
+from utils.multi_process import clear_mpi_env_vars
+
+
+def test_original():
+    args = parse_args()
+
+    random.seed(args.seed)
+    torch.manual_seed(args.seed)
+
+    root_dir = args.data
+    object_list = args.object_list
+
+    object_paths = {obj: os.path.join(root_dir, 'objects_16k', obj, 'google_16k', 'textured.urdf') for
+                    obj in object_list}
+
+    test_obj = '005_tomato_soup_can'
+    nproc = 44
+
+    phy_env = SubprocPhysicsEnv(args=args, object_path=object_paths[test_obj], object_name=test_obj, context='spawn',
+                                nproc=nproc)
+
+    phy_env.reset()
+
+    # generate test data.
+    force_data = [(-0.0047, -0.0841, -0.0801) for i in range(5)]
+    state_data = {'object_name': '005_tomato_soup_can', 'position': (-0.2421,  0.0213,  0.9691),
+                  'rotation': (0.3126, -0.5557,  0.4300, -0.6392), 'velocity': (0.0, 0.0, 0.0),
+                  'omega': (0., 0., 0.)}
+    initial_state = EnvState(object_name='005_tomato_soup_can', position=(-0.2421,  0.0213,  0.9691),
+                             rotation=(0.3126, -0.5557,  0.4300, -0.6392),
+                             velocity=(0.0, 0.0, 0.0), omega=(0., 0., 0.))
+
+    # Initially, one cannot use the list version as input.
+    list_of_contact_points = [[-0.0934, -0.0214,  0.0495], [-0.0651, -0.0909, -0.0848], [-0.0042,  0.0523, -0.0092],
+                              [0.0637, -0.0939, -0.0402], [0.0107,  0.0885,  0.0101]]
+    # list_of_contact_points = torch.Tensor([[-0.0934, -0.0214,  0.0495],
+    #                                        [-0.0651, -0.0909, -0.0848],
+    #                                        [-0.0042,  0.0523, -0.0092],
+    #                                        [0.0637, -0.0939, -0.0402],
+    #                                        [0.0107,  0.0885,  0.0101]])
+    one_data = {'forces': force_data, 'initial_state': state_data, 'object_num': None, 'list_of_contact_points':
+                list_of_contact_points}
+
+    batch_test_data = [one_data for i in range(nproc)]
+
+    print("Test infer time.")
+    bt = time.time()
+    for i in range(2000):
+        phy_env.batch_init_locations_and_apply_force(batch_data=batch_test_data)
+    print("Consuming time: ", time.time() - bt)
+
+
+if __name__ == '__main__':
+    test_original()

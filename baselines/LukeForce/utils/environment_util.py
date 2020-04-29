@@ -18,6 +18,14 @@ def convert_tensor_to_obj_name(object_name_tensor):
     return REGISTERED_OBJECTS[int_object_ind]
 
 
+# env state objects.
+def build_env_state_from_dict(env_state_dict):
+    # one needs to convert the env state to dict and vice versa because env_state is not piclable.
+    return EnvState(object_name=env_state_dict['object_name'], position=env_state_dict['position'],
+                    rotation=env_state_dict['rotation'], velocity=env_state_dict['velocity'],
+                    omega=env_state_dict['omega'])
+
+
 class EnvState:
     size = [3, 4, 3, 3, 1]
     total_size = sum(size)
@@ -89,6 +97,10 @@ class EnvState:
 
     def cpu_(self):
         [self.position, self.rotation, self.velocity, self.omega] = [x.cpu() for x in [self.position, self.rotation, self.velocity, self.omega]]
+
+    def to_dict(self):
+        return {'object_name': self.object_name, 'position': self.position.tolist(), 'rotation': self.rotation.tolist(),
+                'velocity': self.velocity.tolist(), 'omega': self.omega.tolist()}
 
 
 class ForceValOnly:

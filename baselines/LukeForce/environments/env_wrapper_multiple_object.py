@@ -3,7 +3,7 @@ class MultipleObjectWrapper:
 
     def __init__(self, args, object_paths):
         self.list_of_envs = {}
-        self.environment_type = args.environment
+        self.environment_type = args.environment  # default: PhysicsEnv
         self.object_paths = object_paths
         self.number_of_cp = args.number_of_cp
         self.force_h = args.force_h
@@ -12,7 +12,13 @@ class MultipleObjectWrapper:
         if args.render:
             assert len(object_paths) == 1, 'if gui only one object can be visualized'
         for obj in self.object_paths:
-            self.list_of_envs[obj] = self.environment_type(args, self.object_paths[obj], obj)
+            self.list_of_envs[obj] = self.environment_type(render=args.render, object_name=obj,
+                                                           object_path=self.object_paths[obj],
+                                                           gravity=args.gravity, debug=args.debug,
+                                                           number_of_cp=args.number_of_cp, gpu_ids=args.gpu_ids,
+                                                           fps=args.fps, force_multiplier=args.force_multiplier,
+                                                           force_h=args.force_h, state_h=args.state_h,
+                                                           qualitative_size=args.qualitative_size, workers=0)
 
     def reset(self):
         for obj in self.object_paths:
@@ -21,4 +27,5 @@ class MultipleObjectWrapper:
     def init_location_and_apply_force(self, forces, initial_state, object_num=None, list_of_contact_points=None):
         assert list_of_contact_points is not None
         object_name = initial_state.object_name
-        return self.list_of_envs[object_name].init_location_and_apply_force(forces, initial_state, object_num, list_of_contact_points)
+        return self.list_of_envs[object_name].init_location_and_apply_force(forces, initial_state, object_num,
+                                                                            list_of_contact_points)

@@ -80,7 +80,7 @@ def get_non_default_flags_str(args, parser, *ignore):
     return '+'.join(flags)
 
 
-def parse_args():
+def parse_args(log_info=True):
 
     parser = argparse.ArgumentParser(description='Touch torch')
     parser.add_argument('mode', default='train', nargs='?',choices=('train', 'test', 'testtrain', 'savegtforce'))
@@ -92,7 +92,8 @@ def parse_args():
     parser.add_argument('--workers', default=1, type=int, metavar='N', help='number of data loading workers')
     parser.add_argument('--epochs', default=100, type=int, metavar='N', help='number of total epochs to run')
     parser.add_argument('-b', '--batch-size', default=1, type=int, metavar='N', help='mini-batch size (default: 1)')
-    parser.add_argument('--break-batch', default=64, type=int, help='break batches with this factor to fit to memory.')
+    parser.add_argument('--break-batch', default=64, type=int, help='break batches with this factor to fit to memory, this is'
+                                                                    'a workaround for batching')
     parser.add_argument('--lrm', default=0.1, type=float, help='learning rate multiplier.')
     parser.add_argument('--base-lr', default=0.001, type=float, help='base learning rate')
     parser.add_argument('--reload', default=None, type=str, metavar='PATH', help='path to latest checkpoint')
@@ -130,7 +131,6 @@ def parse_args():
     parser.add_argument('--gpu-ids', type=int, default=-1, nargs='+', help='GPUs to use [-1 CPU only] (default: -1)')
     args = parser.parse_args()
 
-
     args.logdir = args.data
 
     args.save = os.path.join(args.logdir, args.save)
@@ -155,6 +155,7 @@ def parse_args():
         args.save, args.model.__name__, log_title, 
         get_non_default_flags_str(args, parser, 'data', 'save', 'model',
                                   'reload', 'title', 'workers', 'save_frequency', 'batch-size', 'gpu-ids'), timestamp)
+
     os.makedirs(args.save, exist_ok=True)
     setup_logging(os.path.join(args.save, 'log.txt'), True)
 
@@ -164,9 +165,10 @@ def parse_args():
         else:
             raise Exception('Not implemented yet')
 
-    logging.info('Command: {}'.format(' '.join(sys.argv)))
-    logging.info('Command line arguments parsed: {}'.format(
-        pprint.pformat(vars(args))))
+    if log_info:
+        logging.info('Command: {}'.format(' '.join(sys.argv)))
+        logging.info('Command line arguments parsed: {}'.format(
+            pprint.pformat(vars(args))))
 
     args.logging_module = LoggingModule(args, log_dir)
 

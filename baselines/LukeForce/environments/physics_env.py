@@ -9,39 +9,33 @@ import numpy as np
 import torch
 from utils.obj_util import obtain_all_vertices_from_obj
 from utils.quaternion_util import quaternion_to_rotation_matrix
-from utils.environment_util import EnvState
+from utils.environment_util import EnvState, ForceValOnly, build_env_state_from_dict
 from utils.constants import OBJECT_TO_SCALE, CONTACT_POINT_MASK_VALUE, GRAVITY_VALUE
 
 
 class PhysicsEnv(BaseBulletEnv):
 
-    def __init__(self, args, object_path, object_name):
-        super(PhysicsEnv, self).__init__(render=args.render)
+    def __init__(self, render, object_name, object_path, gravity, debug, number_of_cp, gpu_ids, fps, force_multiplier,
+                 force_h, state_h, qualitative_size, workers=0):
+        self.render, self.object_path, self.object_name, self.gravity, self.debug, self.number_of_cp, self.gpu_ids, \
+            self.fps, self.force_multiplier, self.force_h, self.state_h, self.qualitative_size = \
+            render, object_path, object_name, gravity, debug, number_of_cp, gpu_ids, fps, force_multiplier, force_h, \
+            state_h, qualitative_size
+        super(PhysicsEnv, self).__init__(render=render)
+        assert not render or workers == 0, 'only support one worker for rendering.'   # consider deprecate worker
         self._pb_urdf_root = pybullet_data.getDataPath()
         self.object_name = object_name
-        self.render = args.render
         self.object_path = object_path
         self.continue_loading = False
-        self.gravity = args.gravity
-        self.debug = args.debug
         self.pybullet_data_path = pybullet_data.getDataPath()
         self.time_step_length = 1 / 240.
-        self.number_of_cp = args.number_of_cp
-        self.gpu_ids = args.gpu_ids
-        self.fps = args.fps
         self.number_of_steps_per_image = int(1 / self.fps / self.time_step_length)
         self.cameraEyePosition = np.array([0, 0, 0])
         self.camera_gaze_direction = np.array([0, 0, 1])
-        self.force_multiplier = args.force_multiplier
-        self.force_h = args.force_h
-        self.state_h = args.state_h
         self.object_path = object_path
         self.scale = OBJECT_TO_SCALE[object_name]
-        if self.render:
-            assert args.workers == 0
         self.sleep_time = 1
-        # assert self.gravity
-        self.qualitative_size = args.qualitative_size
+        self.terminated = 0
 
     def reset(self):
         self.terminated = 0
@@ -79,7 +73,8 @@ class PhysicsEnv(BaseBulletEnv):
             all_normals.append(surface_normal)
         normal_end_vec = torch.stack(all_normals, dim=0)
         normal_begin_vec = torch.zeros(normal_end_vec.shape, device=normal_end_vec.device)
-        return torch.stack([normal_begin_vec, normal_end_vec], dim=1)  # Just adding a zero to it, this will be useful for calculating the new normals
+        # Just adding a zero to it, this will be useful for calculating the new normals
+        return torch.stack([normal_begin_vec, normal_end_vec], dim=1)
 
     def check_force_hit(self, contact_point, surface_normal, force_value):
         d = -(contact_point * surface_normal).sum()
@@ -134,18 +129,18 @@ class PhysicsEnv(BaseBulletEnv):
         self.reset_base_with_normal_quaternion(bodyUniqueId=object_num, posObj=position, ornObj=rotation)
         self._p.resetBaseVelocity(objectUniqueId=object_num, linearVelocity=velocity, angularVelocity=omega)
 
-    def get_rgb(self):
+    def get_rgb(self, get_matrices=False):
         output_w, output_h = self.qualitative_size, self.qualitative_size
 
-        # To get the matrices:
-        #
-        #     width, height, viewMat, projMat, cameraUp, camForward, horizon, vertical, yaw, pitch, dist, camTarget = self._p.getDebugVisualizerCamera()
-        #
-        #     self._p.resetDebugVisualizerCamera(cameraDistance=1, cameraYaw=yaw, cameraPitch=pitch, cameraTargetPosition=camTarget)
-        #
-        #     viewMat = self._p.computeViewMatrix(cameraEyePosition=[0, 0, 0], cameraTargetPosition=[0,0,1], cameraUpVector=[0, -1, 0])
-        #
-        #     w, h, rgb, depth, segmmask = self._p.getCameraImage(output_w, output_h, viewMatrix=viewMat, projectionMatrix=projMat)
+        if get_matrices:
+
+            width, height, viewMat, projMat, cameraUp, camForward, horizon, vertical, yaw, pitch, dist, camTarget = self._p.getDebugVisualizerCamera()
+
+            self._p.resetDebugVisualizerCamera(cameraDistance=1, cameraYaw=yaw, cameraPitch=pitch, cameraTargetPosition=camTarget)
+
+            viewMat = self._p.computeViewMatrix(cameraEyePosition=[0, 0, 0], cameraTargetPosition=[0,0,1], cameraUpVector=[0, -1, 0])
+
+            w, h, rgb, depth, segmmask = self._p.getCameraImage(output_w, output_h, viewMatrix=viewMat, projectionMatrix=projMat)
 
         viewMat = (1.0, 0.0, -0.0, 0.0, 0.0, -1.0, -0.0, 0.0, -0.0, 0.0, -1.0, 0.0, -0.0, -0.0, 0.0, 1.0)
         projMat = (0.7499999403953552, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0000200271606445, -1.0, 0.0, 0.0, -0.02000020071864128, 0.0)
@@ -188,7 +183,23 @@ class PhysicsEnv(BaseBulletEnv):
                         omega=omega)
 
     def init_location_and_apply_force(self, forces, initial_state, object_num, list_of_contact_points):
+        # format transform
+        assert len(forces) == 5, 'Forces should have a dimension of 5.'
+        all_forces = []
+        for idx, force in enumerate(forces):
+            if type(force) == tuple:
+                new_force = ForceValOnly(force)
+                all_forces.append(new_force)
+            else:
+                all_forces.append(force)
+        forces = all_forces
 
+        if type(initial_state) == dict:
+            initial_state = build_env_state_from_dict(env_state_dict=initial_state)
+        if type(list_of_contact_points) == list:
+            list_of_contact_points = torch.Tensor(list_of_contact_points)
+
+        # update list of contact points
         if list_of_contact_points is None:
             gap = int(len(self.vertex_points) / self.number_of_cp)
             list_of_contact_points = [i * gap for i in range(self.number_of_cp)]

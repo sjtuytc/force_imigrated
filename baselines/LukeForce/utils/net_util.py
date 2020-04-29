@@ -229,11 +229,12 @@ class CPGradientLayer(Function):
 
         if not no_grad_on:  # at least one of them needs gradients
             with torch.no_grad():
-
+                # manually compute the gradients via finite differentiate
                 cp_h = 0.05
                 # position and linear velocity should not depend, force similar, just angular
                 manual_tweaks_cp = []
                 contact_point_tensor = list_of_contact_points.view(-1)
+                # compute dS/dC
                 for arg_ind in range(len(contact_point_tensor)):
 
                     changed_contact_point = contact_point_tensor * 1  # Just copy
@@ -249,10 +250,11 @@ class CPGradientLayer(Function):
                         init_location_and_apply_force(initial_state=initial_state, forces=forces,
                                                       list_of_contact_points=changed_contact_point)
 
-                    manual_tweaks_cp.append((env_state_h.toTensor() - f_x_env_state_tensor) / (tweak_value_cp))
+                    manual_tweaks_cp.append((env_state_h.toTensor() - f_x_env_state_tensor) / tweak_value_cp)
 
                 ctx.contact_pt_x_plus_h_diff = torch.stack(manual_tweaks_cp, dim=-2)
 
+                # compute dS/dF
                 force_h = environment.force_h
                 manual_tweaks_force = []
                 for arg_ind in range(len(forces_tensor)):
@@ -270,12 +272,13 @@ class CPGradientLayer(Function):
                         init_location_and_apply_force(initial_state=initial_state, forces=changed_force,
                                                       list_of_contact_points=list_of_contact_points)
 
-                    manual_tweaks_force.append((env_state_h.toTensor() - f_x_env_state_tensor) / (tweak_value_force))
+                    manual_tweaks_force.append((env_state_h.toTensor() - f_x_env_state_tensor) / tweak_value_force)
 
                     finite_diff_success_flags.append(force_success_flag_h)
 
                 ctx.f_x_plus_h_diff = torch.stack(manual_tweaks_force, dim=-2)
 
+                # compute dS_next/dS_current
                 state = initial_state.toTensor()
                 manual_tweaks_initial_state = []
                 state_h = environment.state_h
@@ -294,9 +297,11 @@ class CPGradientLayer(Function):
 
                     env_state_h, force_success_flag_h, force_that_applied_h = \
                         environment.init_location_and_apply_force(initial_state=EnvState.fromTensor(changed_state),
-                                                                  forces=forces, list_of_contact_points=list_of_contact_points)
+                                                                  forces=forces,
+                                                                  list_of_contact_points=list_of_contact_points)
 
-                    manual_tweaks_initial_state.append((env_state_h.toTensor() - f_x_env_state_tensor) / (tweak_value_state))
+                    manual_tweaks_initial_state.append((env_state_h.toTensor() - f_x_env_state_tensor) /
+                                                       tweak_value_state)
 
                     finite_diff_success_flags.append(force_success_flag_h)
                 ctx.initial_state_plus_h_diff = torch.stack(manual_tweaks_initial_state, dim=-2)
@@ -317,11 +322,14 @@ class CPGradientLayer(Function):
 
     @staticmethod
     def backward(ctx, env_state_grad, unwanted_finite_diff_success_flags, unwanted_contact_points):
+        # The last three arguments are from the forward function which are gradients w.r.t the output in inference.
+        # Do NOT use unwanted_contact_points, it does not make any sense.
         grad_output = env_state_grad.unsqueeze(1)
-        # Do NOT use unwanted_contact_points, it does not make any sense
         force_gradient = torch.mm(ctx.f_x_plus_h_diff, grad_output).squeeze(1)
         initial_state_gradient = torch.mm(ctx.initial_state_plus_h_diff, grad_output).squeeze(1)
         contact_point_gradient = torch.mm(ctx.contact_pt_x_plus_h_diff, grad_output).squeeze(1)
+
+        # return the gradients w.r.t the input w.r.t the input in inference.
         return (
             None,  # environment
             initial_state_gradient,  # initial_state
