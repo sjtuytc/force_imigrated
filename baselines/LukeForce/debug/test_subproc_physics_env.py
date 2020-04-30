@@ -55,7 +55,9 @@ def test_original():
     bt = time.time()
     for i in range(2000):
         phy_env.batch_init_locations_and_apply_force(batch_data=batch_test_data)
-    print("Consuming time: ", time.time() - bt)
+    total_time = time.time() - bt
+    print("Consuming time: ", total_time)
+    print("Time per call: ", total_time / 2000 / nproc)
 
 
 if __name__ == '__main__':

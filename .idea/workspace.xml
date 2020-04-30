@@ -2,18 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="480bbb97-1664-4fc7-91b0-287142fc48d0" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_multi_processing.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_env.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_subproc_physics_env.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/subproc_physics_env.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/multi_process.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/doc/force_install.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/env_wrapper_multiple_object.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/env_wrapper_multiple_object.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/physics_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/arg_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/arg_parser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/environment_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/environment_util.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/net_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/net_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/debug/test_subproc_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_subproc_physics_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/models/image_input_predict_cp_separate_tower.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/models/image_input_predict_cp_separate_tower.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -180,7 +172,9 @@
       <workItem from="1587998846835" duration="233000" />
       <workItem from="1588038898976" duration="17271000" />
       <workItem from="1588073134334" duration="11000" />
-      <workItem from="1588124425991" duration="18248000" />
+      <workItem from="1588124425991" duration="21880000" />
+      <workItem from="1588160333375" duration="599000" />
+      <workItem from="1588215236920" duration="320000" />
     </task>
     <task id="LOCAL-00001" summary="add the initial baseline of force prediction">
       <created>1587614585804</created>
@@ -203,7 +197,14 @@
       <option name="project" value="LOCAL" />
       <updated>1587959175592</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Implement multiprocess version of physics env.">
+      <created>1588149759033</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1588149759034</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -226,7 +227,8 @@
     <MESSAGE value="add the initial baseline of force prediction" />
     <MESSAGE value="init readme" />
     <MESSAGE value="Uploading to ibm server." />
-    <option name="LAST_COMMIT_MESSAGE" value="Uploading to ibm server." />
+    <MESSAGE value="Implement multiprocess version of physics env." />
+    <option name="LAST_COMMIT_MESSAGE" value="Implement multiprocess version of physics env." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -253,17 +255,17 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/baselines/LukeForce/models/image_input_predict_cp_separate_tower.py</url>
-          <line>197</line>
+          <line>196</line>
           <option name="timeStamp" value="64" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/baselines/LukeForce/models/image_input_predict_cp_separate_tower.py</url>
-          <line>209</line>
+          <line>208</line>
           <option name="timeStamp" value="67" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/baselines/LukeForce/models/image_input_predict_cp_separate_tower.py</url>
-          <line>171</line>
+          <line>170</line>
           <option name="timeStamp" value="73" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">

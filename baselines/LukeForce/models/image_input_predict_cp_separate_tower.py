@@ -96,7 +96,6 @@ class SeparateTowerModel(BaseModel):
         return x
 
     def forward(self, input_dict, target):
-
         initial_position = input_dict['initial_position']
         initial_rotation = input_dict['initial_rotation']
         rgb = input_dict['rgb']

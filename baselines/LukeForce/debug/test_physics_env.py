@@ -58,12 +58,13 @@ def test_original():
     #                                        [0.0107,  0.0885,  0.0101]])
     print("Test infer time.")
     bt = time.time()
-    for k in range(44*2000):
+    for k in range(2000):
         current_state, list_of_force_success, list_of_force_location = \
             phy_env.init_location_and_apply_force(forces=forces, initial_state=initial_state, object_num=None,
                                                   list_of_contact_points=list_of_contact_points)
-    print("Consuming time: ", time.time() - bt)
-
+    total_t = time.time() - bt
+    print("Consuming time: ", total_t)
+    print("Time per call:", total_t / 2000)
 
 def test_one_function():
     args = parse_args(log_info=False)
