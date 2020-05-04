@@ -1,24 +1,22 @@
 # A wrapper that enables supporting multiple objects in one experiment
 class MultipleObjectWrapper:
 
-    def __init__(self, args, object_paths):
+    def __init__(self, environment, render, gravity, debug, number_of_cp, gpu_ids, fps, force_multiplier,
+                 force_h, state_h, qualitative_size, object_paths):
         self.list_of_envs = {}
-        self.environment_type = args.environment  # default: PhysicsEnv
+        self.environment_type, number_of_cp, force_h, state_h, qualitative_size = \
+            environment, number_of_cp, force_h, state_h, qualitative_size
         self.object_paths = object_paths
-        self.number_of_cp = args.number_of_cp
-        self.force_h = args.force_h
-        self.state_h = args.state_h
-        self.qualitative_size = args.qualitative_size
-        if args.render:
+        if render:
             assert len(object_paths) == 1, 'if gui only one object can be visualized'
         for obj in self.object_paths:
-            self.list_of_envs[obj] = self.environment_type(render=args.render, object_name=obj,
+            self.list_of_envs[obj] = self.environment_type(render=render, object_name=obj,
                                                            object_path=self.object_paths[obj],
-                                                           gravity=args.gravity, debug=args.debug,
-                                                           number_of_cp=args.number_of_cp, gpu_ids=args.gpu_ids,
-                                                           fps=args.fps, force_multiplier=args.force_multiplier,
-                                                           force_h=args.force_h, state_h=args.state_h,
-                                                           qualitative_size=args.qualitative_size, workers=0)
+                                                           gravity=gravity, debug=debug,
+                                                           number_of_cp=number_of_cp, gpu_ids=gpu_ids,
+                                                           fps=fps, force_multiplier=force_multiplier,
+                                                           force_h=force_h, state_h=state_h,
+                                                           qualitative_size=qualitative_size, workers=0)
 
     def reset(self):
         for obj in self.object_paths:

@@ -23,7 +23,8 @@ def save_image_list_to_gif(image_list, gif_name, gif_dir):
     print('Saved result in ', gif_adr)
 
 
-def get_image_list_for_forces(full_output_position, full_output_rotation, force_applied, gt_contact_point, rgb_image, object_name, environment):
+def get_image_list_for_forces(full_output_position, full_output_rotation, force_applied, gt_contact_point, rgb_image,
+                              object_name, environment):
     rgb_image = rgb_image[:-1]
 
     all_images = []
@@ -130,7 +131,8 @@ def draw_mesh_overlay(input, output, target, environment):
     return image_list
 
 
-def get_image_list_for_keypoints(full_target_keypoints, full_output_keypoints, full_output_position, full_output_rotation, gt_contact_point, rgb_image, object_name, environment):
+def get_image_list_for_keypoints(full_target_keypoints, full_output_keypoints, full_output_position,
+                                 full_output_rotation, gt_contact_point, rgb_image, object_name, environment):
     # adding rgb images
     rgb_image = (F.interpolate(normalize(rgb_image), size=(environment.qualitative_size, environment.qualitative_size))).cpu().detach()
     rgb_image = rgb_image.unsqueeze(0)
@@ -161,7 +163,9 @@ def get_image_list_for_keypoints(full_target_keypoints, full_output_keypoints, f
     return image_list
 
 
-def get_image_list_for_object_traj(output_rotation, output_position, target_rotation, target_position, gt_contact_point, initial_rotation, initial_position, object_name, environment, input_rgb, output_contact_point=None):
+def get_image_list_for_object_traj(output_rotation, output_position, target_rotation, target_position, gt_contact_point,
+                                   initial_rotation, initial_position, object_name, environment, input_rgb,
+                                   output_contact_point=None):
     env_state = EnvState(position=initial_position, rotation=initial_rotation, object_name=object_name)
 
     initial_image = environment.get_rgb_for_position_rotation(object_state=env_state)

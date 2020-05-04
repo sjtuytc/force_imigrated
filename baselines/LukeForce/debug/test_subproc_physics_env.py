@@ -25,7 +25,7 @@ def test_original():
     nproc = 44
 
     phy_env = SubprocPhysicsEnv(args=args, object_path=object_paths[test_obj], object_name=test_obj, context='spawn',
-                                nproc=nproc)
+                                nproc=nproc, nenvs=nproc)
 
     phy_env.reset()
 

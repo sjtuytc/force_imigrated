@@ -36,6 +36,7 @@ class PhysicsEnv(BaseBulletEnv):
         self.scale = OBJECT_TO_SCALE[object_name]
         self.sleep_time = 1
         self.terminated = 0
+        self.device = 'cpu'
 
     def reset(self):
         self.terminated = 0
@@ -55,6 +56,7 @@ class PhysicsEnv(BaseBulletEnv):
             self.vertex_points = self.vertex_points.cuda()
             # self.faces, self.middle_points are not on cuda
 
+        self.device = self.center_of_mass.device
         self.on_plane_points = [self.vertex_to_faces_dict[i][0].tolist() for i in range(len(self.vertex_to_faces_dict))]
         self.on_plane_points = torch.Tensor(self.on_plane_points).long()
         if self.gpu_ids != -1:
@@ -187,18 +189,19 @@ class PhysicsEnv(BaseBulletEnv):
         assert len(forces) == 5, 'Forces should have a dimension of 5.'
         all_forces = []
         for idx, force in enumerate(forces):
-            if type(force) == tuple:
+            if type(force) == tuple or type(force) == list or type(force) == torch.Tensor:
                 new_force = ForceValOnly(force)
                 all_forces.append(new_force)
             else:
                 all_forces.append(force)
-        forces = all_forces
-
         if type(initial_state) == dict:
             initial_state = build_env_state_from_dict(env_state_dict=initial_state)
         if type(list_of_contact_points) == list:
             list_of_contact_points = torch.Tensor(list_of_contact_points)
-
+        if self.gpu_ids != -1:
+            list_of_contact_points = list_of_contact_points.to(self.device)
+            all_forces = [f.to(self.device) for f in all_forces]
+        forces = all_forces
         # update list of contact points
         if list_of_contact_points is None:
             gap = int(len(self.vertex_points) / self.number_of_cp)
@@ -232,16 +235,14 @@ class PhysicsEnv(BaseBulletEnv):
                 force_success = False
                 contact_point = torch.Tensor([CONTACT_POINT_MASK_VALUE, CONTACT_POINT_MASK_VALUE, CONTACT_POINT_MASK_VALUE])
                 force_value = torch.Tensor([-1e10, -1e10, -1e10])
-                if self.gpu_ids != -1:
-                    contact_point = contact_point.cuda()
-                    force_value = force_value.cuda()
                 list_of_force_success.append(force_success)
                 list_of_force_location.append(contact_point)
                 list_of_applied_forces.append(force_value)
                 continue  # we should not get a penalty for predicting force on it
             force_to_apply = forces[cp_ind].force
             contact_point = converted_cp[cp_ind]
-
+            contact_point = contact_point.to(self.device)
+            force_to_apply = force_to_apply.to(self.device)
             unoriented_surface_normal = self.all_surface_normals[list_of_contact_points[cp_ind]]
             # Remember this is not a copy this is the real one, DO NOT CHANGE THIS
             surface_normal_end_begin = self.convert_set_of_vertices(unoriented_surface_normal, latest_translation,
@@ -272,7 +273,6 @@ class PhysicsEnv(BaseBulletEnv):
         return current_state, list_of_force_success, list_of_force_location
 
     def apply_force_to_obj(self, force_to_apply, contact_point, surface_normal, object_num=None):
-        poc = contact_point
         if object_num is None:
             object_num = self.object_of_interest_id
 
@@ -280,7 +280,7 @@ class PhysicsEnv(BaseBulletEnv):
             force_success = 0
             force_applied = force_to_apply
         else:
-            hit_, force_applied = self.check_force_hit(contact_point=poc, force_value=force_to_apply,
+            hit_, force_applied = self.check_force_hit(contact_point=contact_point, force_value=force_to_apply,
                                                        surface_normal=surface_normal)
             force_success = hit_
 

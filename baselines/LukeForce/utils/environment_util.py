@@ -139,9 +139,16 @@ class ForceValOnly:
         else:
             raise Exception('Not implemented')
 
+    def tolist(self):
+        return self.force.cpu().tolist()
+
+    def to(self, device):
+        self.force = self.force.to(device)
+        return self
+
 
 def convert_to_tensor(x):
-    if type(x) == tuple:
+    if type(x) == tuple or type(x) == list:
         result = torch.Tensor(x)
         result.requires_grad = True
         return result

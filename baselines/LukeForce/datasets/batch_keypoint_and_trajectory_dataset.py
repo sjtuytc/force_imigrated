@@ -4,11 +4,11 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 from PIL import Image
 import pdb
-from environments.env_wrapper_multiple_object import MultipleObjectWrapper
+from environments.subproc_physics_env import SubprocPhysicsEnv
 from utils.data_loading_utils import _load_transformation_files, get_time_from_str, scale_position, process_projection
 
 
-class DatasetWAugmentation(data.Dataset):
+class BatchDatasetWAugmentation(data.Dataset):
     def __init__(self, args, train=True):
         self.root_dir = args.data
         self.object_list = args.object_list
@@ -50,11 +50,7 @@ class DatasetWAugmentation(data.Dataset):
         self.fps = args.fps
         self.subsample_rate = args.subsample_rate
         print('initializing environments')
-        environment_type = args.environment
-        environment = MultipleObjectWrapper(environment=environment_type, render=args.render, gravity=args.gravity, debug=args.debug,
-                                            number_of_cp=args.number_of_cp, gpu_ids=args.gpu_ids, fps=args.fps,
-                                            force_multiplier=args.force_multiplier, force_h=args.force_h,
-                                            state_h=args.state_h, qualitative_size=args.qualitative_size, object_paths=object_paths)
+        environment = SubprocPhysicsEnv(args=args, object_paths=object_paths, context='spawn', nproc=11, nenvs=44)
         environment.reset()
         print('done initializing environments')
         args.instance_environment = environment

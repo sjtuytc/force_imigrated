@@ -1,6 +1,6 @@
 from environments.base_env import BaseBulletEnv
 from environments.physics_env import PhysicsEnv
-
+from environments.env_wrapper_multiple_object import MultipleObjectWrapper
 import pybullet_data
 from utils.transformations import quaternion_normal2bullet, quaternion_bullet2normal
 
@@ -19,8 +19,16 @@ from utils.multi_process import CloudpickleWrapper, clear_mpi_env_vars
 from environments.base_env import BaseBulletEnv
 
 
-def give_env_fns(num, render, object_name, object_path, gravity, debug, number_of_cp, gpu_ids, fps,
-                 force_multiplier, force_h, state_h, qualitative_size, workers=0):
+def _flatten_list(l):
+    assert isinstance(l, (list, tuple))
+    assert len(l) > 0
+    assert all([len(l_) > 0 for l_ in l])
+
+    return [l__ for l_ in l for l__ in l_]
+
+
+def give_physics_env_fns(num, render, object_name, object_path, gravity, debug, number_of_cp, gpu_ids, fps,
+                         force_multiplier, force_h, state_h, qualitative_size, workers=0):
     def make_env(seed):
         def _thunk():
             env = PhysicsEnv(render=render, object_name=object_name, object_path=object_path, gravity=gravity,
@@ -34,6 +42,20 @@ def give_env_fns(num, render, object_name, object_path, gravity, debug, number_o
     return fns
 
 
+def give_multi_object_env_fns(num_env, env_type, object_paths, gravity, debug, number_of_cp, gpu_ids, fps,
+                              force_multiplier, force_h, state_h, qualitative_size):
+    def make_env(seed):
+        def _thunk():
+            env = MultipleObjectWrapper(environment=env_type, gravity=gravity, render=False,
+                                        debug=debug, number_of_cp=number_of_cp, gpu_ids=gpu_ids, fps=fps,
+                                        force_multiplier=force_multiplier, force_h=force_h, state_h=state_h,
+                                        qualitative_size=qualitative_size, object_paths=object_paths)
+            return env
+        return _thunk
+    fns = [make_env(i) for i in range(num_env)]
+    return fns
+
+
 def worker(remote, parent_remote, env_fn_wrappers):
     def step_env(env, data):
         forces, initial_state, object_num, list_of_contact_points = \
@@ -43,11 +65,12 @@ def worker(remote, parent_remote, env_fn_wrappers):
             env.init_location_and_apply_force(forces=forces, initial_state=initial_state,
                                               object_num=object_num,
                                               list_of_contact_points=list_of_contact_points)
-        # transfer to picklable objects.
+        # transfer the results to picklable objects.
         current_state = current_state.to_dict()
         list_of_force_location = [ele.tolist() for ele in list_of_force_location]
 
-        return current_state, list_of_force_success, list_of_force_location
+        res_one_d = {'state': current_state, 'succ': list_of_force_success, 'loc': list_of_force_location}
+        return res_one_d
 
     parent_remote.close()
     envs = [env_fn_wrapper() for env_fn_wrapper in env_fn_wrappers.x]
@@ -55,6 +78,8 @@ def worker(remote, parent_remote, env_fn_wrappers):
         while True:
             cmd, data = remote.recv()
             if cmd == 'step':
+                assert len(envs) >= len(data), "Not enough environment for data! Env num: %d data num: %d" % \
+                                               (len(envs), len(data))
                 remote.send([step_env(env, data) for env, data in zip(envs, data)])
             elif cmd == 'reset':
                 for env in envs:
@@ -75,19 +100,19 @@ def worker(remote, parent_remote, env_fn_wrappers):
 
 # run multiple envs of one object parallelly.
 class SubprocPhysicsEnv:
-    def __init__(self, args, object_path, object_name, context='spawn', nproc=35):
-        self.obj_path, self.obj_name = object_path, object_name
+    def __init__(self, args, object_paths, context='spawn', nenvs=45, nproc=15):
+        self.obj_path, self.number_of_cp, self.force_h, self.state_h = \
+            object_paths, args.number_of_cp, args.force_h, args.state_h
 
         # multienv settings
         self.closed, self.waiting = False, False
+        assert nenvs % nproc == 0, "Number of envs must be divisible by number of procedures."
+        # n remotes, each remote run nenvs / nproc in parallel.
         self.nremotes = nproc
-        env_fns = give_env_fns(num=self.nremotes, render=args.render, object_name=object_name,
-                               object_path=object_path,
-                               gravity=args.gravity, debug=args.debug,
-                               number_of_cp=args.number_of_cp, gpu_ids=args.gpu_ids,
-                               fps=args.fps, force_multiplier=args.force_multiplier,
-                               force_h=args.force_h, state_h=args.state_h,
-                               qualitative_size=args.qualitative_size, workers=0)
+        env_fns = give_multi_object_env_fns(num_env=nenvs, env_type=args.environment, object_paths=object_paths, gravity=args.gravity,
+                                            debug=args.debug, number_of_cp=self.number_of_cp, gpu_ids=args.gpu_ids,
+                                            fps=args.fps, force_multiplier=args.force_multiplier, force_h=args.force_h,
+                                            state_h=args.state_h, qualitative_size=args.qualitative_size)
         env_fns = np.array_split(env_fns, self.nremotes)
         ctx = mp.get_context(context)
         self.remotes, self.work_remotes = zip(*[ctx.Pipe() for _ in range(self.nremotes)])
@@ -115,6 +140,7 @@ class SubprocPhysicsEnv:
     def batch_wait(self):
         self._assert_not_closed()
         batch_results = [remote.recv() for remote in self.remotes]
+        batch_results = _flatten_list(batch_results)
         self.waiting = False
         return batch_results
 

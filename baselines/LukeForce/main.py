@@ -90,7 +90,7 @@ def main():
 
     logging.info('Constructing model')
     model, loss, restarting_epoch = get_model_and_loss(args)
-
+    print("Model construction finished!")
     if args.mode == 'train':
         optimizer = model.optimizer()
         for i in range(restarting_epoch, args.epochs):
