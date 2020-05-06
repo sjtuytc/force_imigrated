@@ -29,6 +29,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
 
     # Iterate over data
     timestamp = time.time()
+    print("Training begin now!")
     for i, (input, target) in enumerate(tqdm.tqdm(data_loader)):
         # Move data to gpu
         batch_size = input['rgb'].size(0)
@@ -115,12 +116,11 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
                 result_log_dict[type(ac).__name__] = ac.average()
         args.logging_module.log(result_log_dict, epoch, add_to_keys=add_to_keys + '_Summary')
 
-        # TODO: check error here.
         if batch_time_meter is not None and data_time_meter is not None and loss_meter is not None:
             training_summary = ('Epoch: [{}] -- TRAINING SUMMARY\t'.format(epoch) +
-                            'Time {batch_time.sum:.2f}   Data {data_time.sum:.2f}  Loss {loss.avg:.6f}  {accuracy_report}'.
-                            format(batch_time=batch_time_meter, data_time=data_time_meter, loss=loss_meter,
-                                   accuracy_report='\n'.join([ac.final_report() for ac in accuracy_metric])))
+                                'Time {batch_time:.2f}   Data {data_time:.2f}  Loss {loss:.6f}  {accuracy_report}'.
+                                format(batch_time=batch_time_meter.avg, data_time=data_time_meter.avg, loss=loss_meter.avg,
+                                        accuracy_report='\n'.join([ac.final_report() for ac in accuracy_metric])))
         else:
             training_summary = ""
         logging.info(training_summary)

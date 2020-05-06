@@ -12,7 +12,6 @@ import torch
 import multiprocessing as mp
 from utils.obj_util import obtain_all_vertices_from_obj
 from utils.quaternion_util import quaternion_to_rotation_matrix
-from utils.environment_util import EnvState
 from utils.constants import OBJECT_TO_SCALE, CONTACT_POINT_MASK_VALUE, GRAVITY_VALUE
 from utils.multi_process import CloudpickleWrapper, clear_mpi_env_vars
 
@@ -116,8 +115,7 @@ class SubprocPhysicsEnv:
         env_fns = np.array_split(env_fns, self.nremotes)
         ctx = mp.get_context(context)
         self.remotes, self.work_remotes = zip(*[ctx.Pipe() for _ in range(self.nremotes)])
-        self.ps = [ctx.Process(target=worker,
-                               args=(work_remote, remote, CloudpickleWrapper(env_fn)))
+        self.ps = [ctx.Process(target=worker, args=(work_remote, remote, CloudpickleWrapper(env_fn)))
                    for (work_remote, remote, env_fn) in zip(self.work_remotes, self.remotes, env_fns)]
         for p in self.ps:
             p.daemon = True

@@ -39,8 +39,8 @@ pip install -r requirements.txt
 # train the full model
 python main.py --title joint_training --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 
-# with batch processing
-python main.py --title joint_training --sequence_length 10 --gpu-ids -1 --number_of_cp 5 --model BatchSeparateTowerModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
+# train the full model with batch processing
+python main.py --title joint_training_debug --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchSeparateTowerModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 
 # given gt cp predict force
 python3 main.py --title train_all --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model ImageAndCPInputKPOutModel --dataset DatasetWAugmentation --loss KeypointProjectionLoss --object_list ALL --data DatasetForce
@@ -69,6 +69,8 @@ python3 main.py --title test_all_joint_training --sequence_length 10 --gpu-ids 0
 python debug/test_physics_env.py --title joint_training --sequence_length 10 --gpu-ids -1 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 # test multiprocessing physics env
 python debug/test_subproc_physics_env.py --title joint_training --sequence_length 10 --gpu-ids -1 --environment NpPhysicsEnv --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
+# test physical layer.
+python debug/test_physics_layer.py --title joint_training --sequence_length 10 --gpu-ids -1 --environment NpPhysicsEnv --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 ```
 
 

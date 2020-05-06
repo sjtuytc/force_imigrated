@@ -227,7 +227,7 @@ class BatchCPGradientLayer(Function):
                             'object_num': None, 'list_of_contact_points': list_of_contact_points.cpu().tolist()}]
 
         no_grad_on = not (True in ctx.needs_input_grad)
-        assert not no_grad_on, "we assume at least one needs gradients."
+        assert not no_grad_on, "we assume at least one needs gradients, but get " + str(ctx.needs_input_grad)
         with torch.no_grad():  # manually compute the gradients via finite difference
             cp_h = 0.05
             contact_point_tensor = list_of_contact_points.view(-1)
@@ -267,14 +267,9 @@ class BatchCPGradientLayer(Function):
 
             # to compute dS_next/dS_current
             state = initial_state.toTensor()
-            manual_tweaks_initial_state = []
             state_h = environment.state_h
             assert EnvState.OBJECT_TYPE_INDEX == len(state) - 1, "we asssume the last idx is object type"
-            for arg_ind in range(len(state)):
-                if arg_ind == EnvState.OBJECT_TYPE_INDEX:
-                    manual_tweaks_initial_state.append(torch.zeros([len(state)]))
-                    continue
-
+            for arg_ind in range(len(state) - 1):
                 changed_state = state * 1  # just to copy
 
                 tweak_value_state = state_h
@@ -309,7 +304,8 @@ class BatchCPGradientLayer(Function):
             finite_diff_success_flags = all_succ_flags[1+len(contact_point_tensor):] + [all_succ_flags[0]]
             force_fd = [(tweaked - env_state_tensor) / tweak_value_force for tweaked in tweak_force_state_tensors]
             ctx.f_x_plus_h_diff = torch.stack(force_fd, dim=-2)
-            state_fd = [(tweaked - env_state_tensor) / tweak_value_state for tweaked in tweak_state_tensors]
+            state_fd = [(tweaked - env_state_tensor) / tweak_value_state for tweaked in tweak_state_tensors] + \
+                       [torch.zeros([len(state)])]
             ctx.initial_state_plus_h_diff = torch.stack(state_fd, dim=-2)
 
         device = forces_tensor.device
@@ -329,13 +325,12 @@ class BatchCPGradientLayer(Function):
         force_gradient = torch.mm(ctx.f_x_plus_h_diff, grad_output).squeeze(1)
         initial_state_gradient = torch.mm(ctx.initial_state_plus_h_diff, grad_output).squeeze(1)
         contact_point_gradient = torch.mm(ctx.contact_pt_x_plus_h_diff, grad_output).squeeze(1)
-
         # return the gradients w.r.t the input w.r.t the input in inference.
         return (
             None,  # environment
-            initial_state_gradient,  # initial_state
-            force_gradient,  # force
-            contact_point_gradient,  # list_of_contact_points
+            initial_state_gradient,  # gradients for initial_state
+            force_gradient,  # gradients for force tensor
+            contact_point_gradient,  # gradients for contact_point tensor
         )
 
 
@@ -447,7 +442,6 @@ class CPGradientLayer(Function):
             ctx.f_x_plus_h_diff = ctx.f_x_plus_h_diff.to(device=device)
             ctx.initial_state_plus_h_diff = ctx.initial_state_plus_h_diff.to(device=device)
             ctx.contact_pt_x_plus_h_diff = ctx.contact_pt_x_plus_h_diff.to(device=device)
-
         return env_state_tensor, finite_diff_success_flags, force_that_applied
 
     @staticmethod

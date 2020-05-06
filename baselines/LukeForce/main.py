@@ -14,7 +14,9 @@ from utils.arg_parser import parse_args
 
 
 def get_dataset(args):
+    print("Create training dataset.")
     train_dataset = args.dataset(args, train=True)
+    print("Creating validation dataset.")
     val_dataset = args.dataset(args, train=False)
 
     train_loader = torch.utils.data.DataLoader(

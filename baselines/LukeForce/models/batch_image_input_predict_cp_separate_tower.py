@@ -1,4 +1,5 @@
 import torch
+import time
 import torch.nn as nn
 from .base_model import BaseModel
 from utils.net_util import input_embedding_net, combine_block_w_do, BatchCPGradientLayer
@@ -68,7 +69,6 @@ class BatchSeparateTowerModel(BaseModel):
         assert args.batch_size == 1, 'have not been implemented yet, because of the environment'
 
         assert self.number_of_cp == 5  # for five fingers
-
         self.all_objects_keypoint_tensor = get_all_objects_keypoint_tensors(args.data)
         if args.gpu_ids != -1:
             for obj, val in self.all_objects_keypoint_tensor.items():

@@ -17,7 +17,7 @@ class NpPhysicsEnv(BaseBulletEnv):
 
     def __init__(self, render, object_name, object_path, gravity, debug, number_of_cp, fps, force_multiplier,
                  force_h, state_h, qualitative_size, workers=0, gpu_ids=None):
-        assert gpu_ids is None or gpu_ids == -1, "we forbid using GPU when running a single phy env, this is faster."
+        gpu_ids = -1  #  we forbid using GPU when running a single phy env, this is faster.
         self.render, self.object_path, self.object_name, self.gravity, self.debug, self.number_of_cp, \
             self.fps, self.force_multiplier, self.force_h, self.state_h, self.qualitative_size = \
             render, object_path, object_name, gravity, debug, number_of_cp, fps, force_multiplier, force_h, \

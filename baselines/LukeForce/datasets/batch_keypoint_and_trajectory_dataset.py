@@ -74,9 +74,8 @@ class BatchDatasetWAugmentation(data.Dataset):
         self.image_size = 224
         self.sequence_length = args.sequence_length
 
-        print('calculate sequences')
+        print('Get object sequences.')
         self.all_possible_data = self.get_possible_object_sequences()
-        print('done calculating')
         self.all_possible_data += self.get_possible_reverse_sequences()
 
     # Just a data augmentation

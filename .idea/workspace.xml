@@ -1,16 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="480bbb97-1664-4fc7-91b0-287142fc48d0" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/np_physics_env.py" afterDir="false" />
+    <list default="true" id="480bbb97-1664-4fc7-91b0-287142fc48d0" name="Default Changelist" comment="Third version of multiprocessing, speed up to 19x.">
+      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/force.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/force.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/datasets/batch_keypoint_and_trajectory_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/datasets/batch_keypoint_and_trajectory_dataset.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_layer.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_layer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/debug/test_subproc_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_subproc_physics_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/env_wrapper_multiple_object.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/env_wrapper_multiple_object.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/np_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/np_physics_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/subproc_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/subproc_physics_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/models/batch_image_input_predict_cp_separate_tower.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/models/batch_image_input_predict_cp_separate_tower.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/solvers/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/solvers/train.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/arg_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/arg_parser.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/environment_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/environment_util.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/quaternion_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/quaternion_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/net_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/net_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/projection_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/projection_utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/doc/force_install.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/force_install.md" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -40,7 +46,7 @@
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/baselines/LukeForce/environments" />
-    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+    <property name="settings.editor.selected.configurable" value="web.server" />
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
@@ -65,7 +71,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.test_physics_layer">
+  <component name="RunManager" selected="Python.joint_train">
     <configuration name="joint_train" type="PythonConfigurationType" factoryName="Python">
       <module name="force" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -80,7 +86,7 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/baselines/LukeForce/main.py" />
-      <option name="PARAMETERS" value="--title joint_training --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train" />
+      <option name="PARAMETERS" value="--sequence_length 10 --gpu-ids -1 --number_of_cp 5 --model BatchSeparateTowerModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -176,15 +182,39 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="train" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="force" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/baselines/LukeForce/solvers" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/baselines/LukeForce/solvers/train.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <list>
       <item itemvalue="Python.joint_train" />
       <item itemvalue="Python.physics_env" />
       <item itemvalue="Python.test_physics_env" />
       <item itemvalue="Python.test_subproc_physics_env" />
       <item itemvalue="Python.test_physics_layer" />
+      <item itemvalue="Python.train" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.train" />
         <item itemvalue="Python.test_physics_layer" />
         <item itemvalue="Python.test_subproc_physics_env" />
         <item itemvalue="Python.test_physics_env" />
@@ -220,7 +250,8 @@
       <workItem from="1588644328571" duration="4380000" />
       <workItem from="1588688187739" duration="1435000" />
       <workItem from="1588690414122" duration="410000" />
-      <workItem from="1588729002312" duration="5032000" />
+      <workItem from="1588729002312" duration="10271000" />
+      <workItem from="1588747442656" duration="4940000" />
     </task>
     <task id="LOCAL-00001" summary="add the initial baseline of force prediction">
       <created>1587614585804</created>
@@ -264,7 +295,14 @@
       <option name="project" value="LOCAL" />
       <updated>1588599318503</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Third version of multiprocessing, speed up to 19x.">
+      <created>1588735484901</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1588735484901</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -290,7 +328,8 @@
     <MESSAGE value="Implement multiprocess version of physics env." />
     <MESSAGE value="Initial version of subprocessing." />
     <MESSAGE value="Second version of multiprocessing. The key issue is that phyenv utilizes too much tensor operation." />
-    <option name="LAST_COMMIT_MESSAGE" value="Second version of multiprocessing. The key issue is that phyenv utilizes too much tensor operation." />
+    <MESSAGE value="Third version of multiprocessing, speed up to 19x." />
+    <option name="LAST_COMMIT_MESSAGE" value="Third version of multiprocessing, speed up to 19x." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -337,8 +376,13 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/baselines/LukeForce/environments/subproc_physics_env.py</url>
-          <line>144</line>
+          <line>142</line>
           <option name="timeStamp" value="114" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/baselines/LukeForce/solvers/train.py</url>
+          <line>46</line>
+          <option name="timeStamp" value="115" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
@@ -349,5 +393,6 @@
     <SUITE FILE_PATH="coverage/force$physics_env.coverage" NAME="physics_env Coverage Results" MODIFIED="1587712656655" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/baselines/LukeForce/environments" />
     <SUITE FILE_PATH="coverage/force$test_subproc_physics_env.coverage" NAME="test_subproc_physics_env Coverage Results" MODIFIED="1588147256991" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/baselines/LukeForce/debug" />
     <SUITE FILE_PATH="coverage/force$test_physics_layer.coverage" NAME="test_physics_layer Coverage Results" MODIFIED="1588239812291" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/baselines/LukeForce" />
+    <SUITE FILE_PATH="coverage/force$train.coverage" NAME="train Coverage Results" MODIFIED="1588747193720" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/baselines/LukeForce/solvers" />
   </component>
 </project>

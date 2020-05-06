@@ -67,6 +67,27 @@ class NpEnvState:
         return {'object_name': self.object_name, 'position': self.position.tolist(), 'rotation': self.rotation.tolist(),
                 'velocity': self.velocity.tolist(), 'omega': self.omega.tolist()}
 
+    def toTensor(self, device):
+        tensor_position, tensor_rotation, tensor_velocity, tensor_omega = torch.Tensor(self.position).to(device), torch.Tensor(self.rotation).to(device), \
+                                                                          torch.Tensor(self.velocity).to(device), torch.Tensor(self.omega).to(device)
+        assert self.object_name in REGISTERED_OBJECTS
+        object_name_tensor = convert_obj_name_to_tensor(self.object_name)
+        object_name_tensor = object_name_tensor.to(device)
+        result_tensor = torch.cat([tensor_position, tensor_rotation, tensor_velocity, tensor_omega, object_name_tensor], dim=-1)
+        assert result_tensor.shape[0] == NpEnvState.total_size
+        return result_tensor
+
+    @staticmethod
+    def fromTensor(tensor):
+        assert tensor.shape[0] == NpEnvState.total_size and len(tensor.shape) == 1, "Shape does not match when creating NpEnvState"
+        position = tensor[0:3].detach().cpu()
+        rotation = tensor[3:7].detach().cpu()
+        velocity = tensor[7:10].detach().cpu()
+        omega = tensor[10:13].detach().cpu()
+        assert 0 <= tensor[EnvState.OBJECT_TYPE_INDEX] < len(REGISTERED_OBJECTS)
+        object_name = convert_tensor_to_obj_name(tensor[EnvState.OBJECT_TYPE_INDEX])
+        return NpEnvState(object_name, position, rotation, velocity, omega)
+
 
 class EnvState:
     size = [3, 4, 3, 3, 1]

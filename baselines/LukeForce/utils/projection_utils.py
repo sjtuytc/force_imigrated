@@ -100,6 +100,8 @@ def convert_to_color(kp_ind):
         9: (1,204./255.,153./255.), #light orange
     }
     return all_colors[kp_ind]
+
+
 def put_keypoints_on_image(image, keypoints, SIZE_OF_DOT=5, coloring=True):
     image = image + 0. #Copy image
     w, h, c = image.shape
@@ -119,13 +121,13 @@ def put_keypoints_on_image(image, keypoints, SIZE_OF_DOT=5, coloring=True):
     return image
 
 
-
 def reverse_center_of_mass_translation(translation_mat, environment):
     center_of_mass = environment.center_of_mass
     if center_of_mass.device != translation_mat.device:
         center_of_mass = center_of_mass.to(translation_mat.device)
     translation_mat = translation_mat - center_of_mass.detach()
     return translation_mat
+
 
 def get_set_of_vertices_projection(environment, resulting_positions, resulting_rotations):
     set_of_points = environment.vertex_points
