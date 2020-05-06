@@ -2,22 +2,15 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="480bbb97-1664-4fc7-91b0-287142fc48d0" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/baselines/LukeForce/datasets/batch_keypoint_and_trajectory_dataset.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_layer.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/baselines/LukeForce/models/batch_image_input_predict_cp_separate_tower.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/np_physics_env.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/datasets/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/datasets/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/datasets/keypoint_and_trajectory_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/datasets/keypoint_and_trajectory_dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_layer.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_layer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/baselines/LukeForce/debug/test_subproc_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_subproc_physics_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/env_wrapper_multiple_object.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/env_wrapper_multiple_object.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/physics_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/subproc_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/subproc_physics_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/solvers/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/solvers/train.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/environment_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/environment_util.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/net_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/net_util.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/visualization_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/visualization_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/quaternion_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/quaternion_util.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/doc/force_install.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/force_install.md" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -46,7 +39,7 @@
   <component name="PropertiesComponent">
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/baselines/LukeForce/datasets" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/baselines/LukeForce/environments" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
@@ -54,6 +47,7 @@
       <recent name="$PROJECT_DIR$" />
     </key>
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/baselines/LukeForce/environments" />
       <recent name="$PROJECT_DIR$/baselines/LukeForce/datasets" />
       <recent name="$PROJECT_DIR$/baselines/LukeForce/models" />
       <recent name="$PROJECT_DIR$/baselines" />
@@ -221,7 +215,12 @@
       <workItem from="1588215236920" duration="20812000" />
       <workItem from="1588337537529" duration="5599000" />
       <workItem from="1588498101840" duration="1453000" />
-      <workItem from="1588589188590" duration="8375000" />
+      <workItem from="1588589188590" duration="9985000" />
+      <workItem from="1588604693286" duration="1457000" />
+      <workItem from="1588644328571" duration="4380000" />
+      <workItem from="1588688187739" duration="1435000" />
+      <workItem from="1588690414122" duration="410000" />
+      <workItem from="1588729002312" duration="5032000" />
     </task>
     <task id="LOCAL-00001" summary="add the initial baseline of force prediction">
       <created>1587614585804</created>
@@ -258,7 +257,14 @@
       <option name="project" value="LOCAL" />
       <updated>1588215577125</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Second version of multiprocessing. The key issue is that phyenv utilizes too much tensor operation.">
+      <created>1588599318503</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1588599318503</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -283,7 +289,8 @@
     <MESSAGE value="Uploading to ibm server." />
     <MESSAGE value="Implement multiprocess version of physics env." />
     <MESSAGE value="Initial version of subprocessing." />
-    <option name="LAST_COMMIT_MESSAGE" value="Initial version of subprocessing." />
+    <MESSAGE value="Second version of multiprocessing. The key issue is that phyenv utilizes too much tensor operation." />
+    <option name="LAST_COMMIT_MESSAGE" value="Second version of multiprocessing. The key issue is that phyenv utilizes too much tensor operation." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -315,17 +322,17 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_env.py</url>
-          <line>61</line>
+          <line>47</line>
           <option name="timeStamp" value="90" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/baselines/LukeForce/debug/test_subproc_physics_env.py</url>
-          <line>29</line>
+          <line>24</line>
           <option name="timeStamp" value="96" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/baselines/LukeForce/debug/test_subproc_physics_env.py</url>
-          <line>41</line>
+          <line>32</line>
           <option name="timeStamp" value="102" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">

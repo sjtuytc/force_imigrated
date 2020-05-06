@@ -26,6 +26,48 @@ def build_env_state_from_dict(env_state_dict):
                     omega=env_state_dict['omega'])
 
 
+def build_np_env_state_from_dict(env_state_dict):
+    # one needs to convert the env state to dict and vice versa because env_state is not piclable.
+    return NpEnvState(object_name=env_state_dict['object_name'], position=env_state_dict['position'],
+                        rotation=env_state_dict['rotation'], velocity=env_state_dict['velocity'],
+                        omega=env_state_dict['omega'])
+
+
+class NpEnvState:
+    size = [3, 4, 3, 3, 1]
+    total_size = sum(size)
+    OBJECT_TYPE_INDEX = total_size - 1
+
+    def __init__(self, object_name, position, rotation, velocity=None, omega=None):
+        if velocity is None:
+            velocity = np.array([0., 0., 0.])
+        if omega is None:
+            omega = np.array([0., 0., 0.])
+        position, rotation, velocity, omega = \
+            np.array(position), np.array(rotation), np.array(velocity), np.array(omega)
+        assert len(position) == 3 and len(rotation) == 4 and len(velocity) == 3 and len(omega) == 3
+
+        # ((1+0.01*z)/(1+2z*0.01+0.01^2)) -> function of diff of (w,x,y,z) - (w,x,y,z+eps)
+        # rotation = F.normalize(rotation.expand_dims(axis=0)).squeeze(0)
+        expanded_rotation = np.expand_dims(rotation, axis=0)
+        rotation = (expanded_rotation / np.linalg.norm(expanded_rotation)).squeeze(axis=0)
+        self.position = position
+        self.rotation = rotation
+        self.velocity = velocity
+        self.omega = omega
+        self.object_name = object_name
+
+    def clone(self):
+        return NpEnvState(object_name=self.object_name, position=self.position, rotation=self.rotation, velocity=self.velocity, omega=self.omega)
+
+    def __str__(self):
+        return 'object_name:{},position:{},rotation:{},velocity:{},omega:{}'.format(self.object_name, self.position, self.rotation, self.velocity, self.omega)
+
+    def to_dict(self):
+        return {'object_name': self.object_name, 'position': self.position.tolist(), 'rotation': self.rotation.tolist(),
+                'velocity': self.velocity.tolist(), 'omega': self.omega.tolist()}
+
+
 class EnvState:
     size = [3, 4, 3, 3, 1]
     total_size = sum(size)
@@ -101,6 +143,25 @@ class EnvState:
     def to_dict(self):
         return {'object_name': self.object_name, 'position': self.position.tolist(), 'rotation': self.rotation.tolist(),
                 'velocity': self.velocity.tolist(), 'omega': self.omega.tolist()}
+
+
+class NpForceValOnly:
+    size = [3]
+    total_size = sum(size)
+
+    def __init__(self, force):
+
+        assert len(force) == 3
+
+        force = np.array(force)
+
+        self.force = force
+
+    def __str__(self):
+        return 'force:{}'.format(self.force)
+
+    def tolist(self):
+        return self.force.tolist()
 
 
 class ForceValOnly:

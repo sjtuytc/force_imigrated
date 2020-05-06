@@ -95,7 +95,7 @@ def subtract_quaternion(current_q, prev_q):
 
 
 # borrowed from https://github.com/arraiyopensource/kornia/blob/d8c547152f93b56f7a8d6985be852ef5c9735650/kornia/geometry/conversions.py
-# THis is differentiable
+# This is differentiable
 def quaternion_to_rotation_matrix(quaternion: torch.Tensor) -> torch.Tensor:
     r"""Converts a quaternion to a rotation matrix.
     The quaternion should be in (w, x, y, z) format.
@@ -149,6 +149,8 @@ def quaternion_to_rotation_matrix(quaternion: torch.Tensor) -> torch.Tensor:
     if len(quaternion.shape) == 1:
         matrix = torch.squeeze(matrix, dim=0)
     return matrix
+
+
 
 
 def angle_axis_to_rotation_matrix(angle_axis):

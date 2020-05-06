@@ -4,7 +4,7 @@ class MultipleObjectWrapper:
     def __init__(self, environment, render, gravity, debug, number_of_cp, gpu_ids, fps, force_multiplier,
                  force_h, state_h, qualitative_size, object_paths):
         self.list_of_envs = {}
-        self.environment_type, number_of_cp, force_h, state_h, qualitative_size = \
+        self.environment_type, self.number_of_cp, self.force_h, self.state_h, self.qualitative_size = \
             environment, number_of_cp, force_h, state_h, qualitative_size
         self.object_paths = object_paths
         if render:
@@ -24,6 +24,13 @@ class MultipleObjectWrapper:
 
     def init_location_and_apply_force(self, forces, initial_state, object_num=None, list_of_contact_points=None):
         assert list_of_contact_points is not None
-        object_name = initial_state.object_name
+        if type(initial_state) == dict:
+            object_name = initial_state['object_name']
+        else:
+            object_name = initial_state.object_name
         return self.list_of_envs[object_name].init_location_and_apply_force(forces, initial_state, object_num,
                                                                             list_of_contact_points)
+
+    def close(self):
+        for obj in self.object_paths:
+            self.list_of_envs[obj].close()
