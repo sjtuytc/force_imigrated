@@ -2,15 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="480bbb97-1664-4fc7-91b0-287142fc48d0" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/force.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/force.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/datasets/baseline_force_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/datasets/baseline_force_dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_layer.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_layer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/models/baseline_regress_force.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/models/baseline_regress_force.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/constants.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/np_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/np_physics_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/physics_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/subproc_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/subproc_physics_env.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/net_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/net_util.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/doc/force_install.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/force_install.md" afterDir="false" />
     </list>
@@ -41,7 +38,7 @@
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/baselines/LukeForce/environments" />
-    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+    <property name="settings.editor.selected.configurable" value="web.server" />
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
@@ -250,6 +247,8 @@
       <workItem from="1588766729249" duration="5041000" />
       <workItem from="1588814102999" duration="4000" />
       <workItem from="1588817689809" duration="3092000" />
+      <workItem from="1588835487709" duration="362000" />
+      <workItem from="1588836743318" duration="6343000" />
     </task>
     <task id="LOCAL-00001" summary="add the initial baseline of force prediction">
       <created>1587614585804</created>
@@ -307,7 +306,14 @@
       <option name="project" value="LOCAL" />
       <updated>1588752485836</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="Support no gradient paralleling.">
+      <created>1588835719375</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1588835719375</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -335,7 +341,8 @@
     <MESSAGE value="Second version of multiprocessing. The key issue is that phyenv utilizes too much tensor operation." />
     <MESSAGE value="Third version of multiprocessing, speed up to 19x." />
     <MESSAGE value="Finish multiprocessing. Improve training time." />
-    <option name="LAST_COMMIT_MESSAGE" value="Finish multiprocessing. Improve training time." />
+    <MESSAGE value="Support no gradient paralleling." />
+    <option name="LAST_COMMIT_MESSAGE" value="Support no gradient paralleling." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -367,7 +374,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_env.py</url>
-          <line>47</line>
+          <line>48</line>
           <option name="timeStamp" value="90" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -382,7 +389,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/baselines/LukeForce/environments/subproc_physics_env.py</url>
-          <line>142</line>
+          <line>127</line>
           <option name="timeStamp" value="114" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">

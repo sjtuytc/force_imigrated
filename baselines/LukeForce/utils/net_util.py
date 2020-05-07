@@ -297,13 +297,13 @@ class BatchCPGradientLayer(Function):
                         1 + len(contact_point_tensor) + len(forces_tensor) + len(state) - 1)]
             tweak_cp_state_tensors, tweak_force_state_tensors, tweak_state_tensors = \
                 [all_state_tensors[a: b] for a, b in indexes]
-            cp_fd = [(tweaked - env_state_tensor) / tweak_value_cp for tweaked in tweak_cp_state_tensors]
+            cp_fd = [(env_state_tensor - tweaked) / tweak_value_cp for tweaked in tweak_cp_state_tensors]
             if no_grad_on:
                 finite_diff_success_flags = [all_succ_flags[0]]
             else:
                 finite_diff_success_flags = all_succ_flags[1 + len(contact_point_tensor):] + [all_succ_flags[0]]
-            force_fd = [(tweaked - env_state_tensor) / tweak_value_force for tweaked in tweak_force_state_tensors]
-            state_fd = [(tweaked - env_state_tensor) / tweak_value_state for tweaked in tweak_state_tensors] + \
+            force_fd = [(env_state_tensor - tweaked) / tweak_value_force for tweaked in tweak_force_state_tensors]
+            state_fd = [(env_state_tensor - tweaked) / tweak_value_state for tweaked in tweak_state_tensors] + \
                        [torch.zeros([len(state)])]
             if not no_grad_on:
                 ctx.contact_pt_x_plus_h_diff = torch.stack(cp_fd, dim=-2)
@@ -316,9 +316,9 @@ class BatchCPGradientLayer(Function):
         finite_diff_success_flags = torch.Tensor(finite_diff_success_flags).to(device=device)
         env_state_tensor = env_state_tensor.to(device=device)
         if not no_grad_on:  # if require grads.
+            ctx.contact_pt_x_plus_h_diff = ctx.contact_pt_x_plus_h_diff.to(device=device)
             ctx.f_x_plus_h_diff = ctx.f_x_plus_h_diff.to(device=device)
             ctx.initial_state_plus_h_diff = ctx.initial_state_plus_h_diff.to(device=device)
-            ctx.contact_pt_x_plus_h_diff = ctx.contact_pt_x_plus_h_diff.to(device=device)
         return env_state_tensor, finite_diff_success_flags, force_that_applied
 
     @staticmethod

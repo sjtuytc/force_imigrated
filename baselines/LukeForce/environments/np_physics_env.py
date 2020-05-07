@@ -62,7 +62,7 @@ class NpPhysicsEnv(BaseBulletEnv):
             face = vertex_to_face_dict[vert_ind][0].tolist()
             vertices_on_this_face = vertices[face]
             surface_normal = np.cross((vertices_on_this_face[1] - vertices_on_this_face[0]) * 10,
-                                        (vertices_on_this_face[2] - vertices_on_this_face[0]) * 10)
+                                      (vertices_on_this_face[2] - vertices_on_this_face[0]) * 10)
             # To avoid numerical errors because these are all very close
             surface_normal = surface_normal / np.linalg.norm(surface_normal)
             all_normals.append(surface_normal)
@@ -81,7 +81,8 @@ class NpPhysicsEnv(BaseBulletEnv):
         elif side_of_force > 0:
             # force is applied tangentically
             a_cross_b = np.cross(force_value, surface_normal)
-            projected_force = np.cross(surface_normal, a_cross_b / np.linalg.norm(surface_normal) / np.linalg.norm(surface_normal))
+            projected_force = np.cross(surface_normal, a_cross_b / np.linalg.norm(surface_normal)) / \
+                              np.linalg.norm(surface_normal)
             return 0.5, projected_force
         else:
             return 0, None
@@ -169,8 +170,11 @@ class NpPhysicsEnv(BaseBulletEnv):
         return rotated_vertices + position.reshape(1, 3)
 
     def get_rotation_mat(self, state):
-        quat = R.from_quat(state.rotation.reshape(1, 4))
-        return quat.as_matrix().squeeze(0)
+        # transfer to scalar-last format.
+        scalar_first = state.rotation.tolist()
+        scalar_last = scalar_first[1:] + [scalar_first[0]]
+        quat = R.from_quat(scalar_last)
+        return quat.as_matrix()
 
     def get_current_state(self, object_num=None):
         if object_num is None:

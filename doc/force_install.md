@@ -74,3 +74,4 @@ python debug/test_physics_layer.py --title joint_training --sequence_length 10 -
 
 
 
+DatasetForce/cache/SeparateTowerModel/joint_training_2020-04-27_04:01:46/dataset-DatasetWAugmentation+gpu_ids-[0]+logdir-DatasetForce+loss-KPProjectionCPPredictionLoss+object_list-['ALL']+qualitative_dir-DatasetForce/qualitative_plots/joint_training_2020-04-27_04:01:46/2020-04-27#04.01.46.157735/train.log

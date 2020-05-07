@@ -26,21 +26,6 @@ def _flatten_list(l):
     return [l__ for l_ in l for l__ in l_]
 
 
-def give_physics_env_fns(num, render, object_name, object_path, gravity, debug, number_of_cp, gpu_ids, fps,
-                         force_multiplier, force_h, state_h, qualitative_size, workers=0):
-    def make_env(seed):
-        def _thunk():
-            env = PhysicsEnv(render=render, object_name=object_name, object_path=object_path, gravity=gravity,
-                             debug=debug, number_of_cp=number_of_cp, gpu_ids=gpu_ids, fps=fps,
-                             force_multiplier=force_multiplier, force_h=force_h, state_h=state_h,
-                             qualitative_size=qualitative_size, workers=workers)
-            env.seed(seed)
-            return env
-        return _thunk
-    fns = [make_env(i) for i in range(num)]
-    return fns
-
-
 def give_multi_object_env_fns(num_env, env_type, object_paths, gravity, debug, number_of_cp, gpu_ids, fps,
                               force_multiplier, force_h, state_h, qualitative_size):
     def make_env(seed):
