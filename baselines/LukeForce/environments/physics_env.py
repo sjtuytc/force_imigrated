@@ -173,8 +173,6 @@ class PhysicsEnv(BaseBulletEnv):
         return rotated_vertices + position.view(1, 3)
 
     def get_rotation_mat(self, state):
-        print("quaternion:", state.rotation.view(1, 4), "; matrix:",
-              quaternion_to_rotation_matrix(state.rotation.view(1, 4)).squeeze(0))
         return quaternion_to_rotation_matrix(state.rotation.view(1, 4)).squeeze(0)
 
     def get_current_state(self, object_num=None):

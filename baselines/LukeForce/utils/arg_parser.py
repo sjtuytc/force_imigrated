@@ -103,7 +103,7 @@ def parse_args(log_info=True):
                         help='Loading the weights from another model.')
     parser.add_argument('--step_size', default=200, type=int, help='Step size for reducing the learning rate')
     parser.add_argument('--dropout_ratio', default=0.3, type=float)
-    parser.add_argument('--seed', default=10, type=int)
+    parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--number_of_cp', default=5, type=int)
     parser.add_argument('--manual_epoch', default=None, type=int)
     parser.add_argument('--tensorboard_log_freq', default=100, type=int)

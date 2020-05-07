@@ -74,8 +74,8 @@ def get_model_and_loss(args):
     loss = model.loss(args)
     if args.gpu_ids != -1:
         loss = loss.cuda()
-    logging.info('Model: {}'.format(model))
-    logging.info('Loss: {}'.format(loss))
+    # logging.info('Model: {}'.format(model))
+    # logging.info('Loss: {}'.format(loss))
     return model, loss, restarting_epoch
 
 
@@ -85,12 +85,11 @@ def main():
     random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-    print("All arguments are:")
-    print(args)
-    logging.info('Reading dataset metadata')
+
+    logging.info('Reading dataset metadata.')
     train_loader, val_loader = get_dataset(args)
 
-    logging.info('Constructing model')
+    logging.info('Constructing model.')
     model, loss, restarting_epoch = get_model_and_loss(args)
     print("Model construction finished!")
     if args.mode == 'train':

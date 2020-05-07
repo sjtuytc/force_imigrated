@@ -7,6 +7,9 @@ import tqdm
 
 
 def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
+    import random
+    random.seed(0)
+
     add_to_keys = 'Train'
 
     # Prepare model and optimizer
@@ -31,7 +34,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
     timestamp = time.time()
     print("Training begin now!")
     for i, (input, target) in enumerate(tqdm.tqdm(data_loader)):
-        # Move data to gpu
+        # Move data to gp[u
         batch_size = input['rgb'].size(0)
         if args.gpu_ids != -1:  # if use gpu
             for feature in input:
@@ -45,7 +48,6 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
             # Forward pass
             output, target_output = model(input, target)
             forward_pass_time_meter.update((time.time() - before_forward_pass_time) / batch_size, batch_size)
-
             before_loss_time = time.time()
             loss_output = loss(output, target_output)
             loss_time_meter.update((time.time() - before_loss_time) / batch_size, batch_size)
@@ -55,7 +57,6 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
             backward_time_meter.update((time.time() - before_backward_time) / batch_size, batch_size)
 
             output = {f: output[f].detach() for f in output.keys()}
-
             if i % args.break_batch == 0 or i == len(data_loader) - 1:
                 optimizer.step()
                 optimizer.zero_grad()
