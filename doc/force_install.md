@@ -42,12 +42,11 @@ python main.py --title joint_training --sequence_length 10 --gpu-ids 0 --number_
 # train the full model with batch processing
 python main.py --title joint_training_debug --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchSeparateTowerModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 
-# given gt cp predict force
-python3 main.py --title train_all --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model ImageAndCPInputKPOutModel --dataset DatasetWAugmentation --loss KeypointProjectionLoss --object_list ALL --data DatasetForce
-```
+# only predict contact point.
+python main.py --title train_cp_prediction --batch-size 1 --workers 10 --gpu-ids 0 --number_of_cp 5 --model NoForceOnlyCPModel --dataset DatasetWAugmentation --loss CPPredictionLoss --object_list ALL --break-batch 1 --data DatasetForce train
 
-```shell
-python main.py --title train_cp_prediction --batch-size 64 --workers 10 --gpu-ids 0 --number_of_cp 5 --model NoForceOnlyCPModel --dataset DatasetWAugmentation --loss CPPredictionLoss --object_list ALL --break-batch 1 --data DatasetForce
+# Calculate and save gt force.
+python main.py --title save_gt_force --batch-size 1 --workers 10 --gpu-ids 1 --number_of_cp 5 --model NoModelGTForceBaseline --dataset BaselineForceDatasetWAugmentation --loss KeypointProjectionLoss --object_list ALL --break-batch 1 --data DatasetForce --predicted_cp_adr DatasetForce/gtforce_train.json savegtforce
 ```
 
 2. Testing command:

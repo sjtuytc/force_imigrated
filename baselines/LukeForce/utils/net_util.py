@@ -227,7 +227,6 @@ class BatchCPGradientLayer(Function):
                             'object_num': None, 'list_of_contact_points': list_of_contact_points.cpu().tolist()}]
 
         no_grad_on = not (True in ctx.needs_input_grad)
-        assert not no_grad_on, "we assume at least one needs gradients, but get " + str(ctx.needs_input_grad)
         with torch.no_grad():  # manually compute the gradients via finite difference
             cp_h = 0.05
             contact_point_tensor = list_of_contact_points.view(-1)
@@ -283,7 +282,6 @@ class BatchCPGradientLayer(Function):
                                         'object_num': None,
                                         'list_of_contact_points': list_of_contact_points.cpu().tolist()})
 
-        with torch.no_grad():
             batch_data = environment.batch_init_locations_and_apply_force(batch_data=batch_phy_input)
             all_state_tensors = [build_env_state_from_dict(one_d['state']).toTensor() for one_d in batch_data]
             all_succ_flags = [one_d['succ'] for one_d in batch_data]
@@ -293,28 +291,34 @@ class BatchCPGradientLayer(Function):
                 "Result tensor dimension is unexpected, expected %d, but get %d" % (expected_length,
                                                                                     len(all_state_tensors))
             env_state_tensor = all_state_tensors[0]
-            indexes = [(1, 1+len(contact_point_tensor)),
+            indexes = [(1, 1 + len(contact_point_tensor)),
                        (1 + len(contact_point_tensor), 1 + len(contact_point_tensor) + len(forces_tensor)),
                        (1 + len(contact_point_tensor) + len(forces_tensor),
                         1 + len(contact_point_tensor) + len(forces_tensor) + len(state) - 1)]
             tweak_cp_state_tensors, tweak_force_state_tensors, tweak_state_tensors = \
                 [all_state_tensors[a: b] for a, b in indexes]
             cp_fd = [(tweaked - env_state_tensor) / tweak_value_cp for tweaked in tweak_cp_state_tensors]
-            ctx.contact_pt_x_plus_h_diff = torch.stack(cp_fd, dim=-2)
-            finite_diff_success_flags = all_succ_flags[1+len(contact_point_tensor):] + [all_succ_flags[0]]
+            if no_grad_on:
+                finite_diff_success_flags = [all_succ_flags[0]]
+            else:
+                finite_diff_success_flags = all_succ_flags[1 + len(contact_point_tensor):] + [all_succ_flags[0]]
             force_fd = [(tweaked - env_state_tensor) / tweak_value_force for tweaked in tweak_force_state_tensors]
-            ctx.f_x_plus_h_diff = torch.stack(force_fd, dim=-2)
             state_fd = [(tweaked - env_state_tensor) / tweak_value_state for tweaked in tweak_state_tensors] + \
                        [torch.zeros([len(state)])]
-            ctx.initial_state_plus_h_diff = torch.stack(state_fd, dim=-2)
+            if not no_grad_on:
+                ctx.contact_pt_x_plus_h_diff = torch.stack(cp_fd, dim=-2)
+                ctx.f_x_plus_h_diff = torch.stack(force_fd, dim=-2)
+                ctx.initial_state_plus_h_diff = torch.stack(state_fd, dim=-2)
 
+        # summarize results
         device = forces_tensor.device
         force_that_applied = torch.Tensor(all_force_locations[0]).to(device=device)
         finite_diff_success_flags = torch.Tensor(finite_diff_success_flags).to(device=device)
         env_state_tensor = env_state_tensor.to(device=device)
-        ctx.f_x_plus_h_diff = ctx.f_x_plus_h_diff.to(device=device)
-        ctx.initial_state_plus_h_diff = ctx.initial_state_plus_h_diff.to(device=device)
-        ctx.contact_pt_x_plus_h_diff = ctx.contact_pt_x_plus_h_diff.to(device=device)
+        if not no_grad_on:  # if require grads.
+            ctx.f_x_plus_h_diff = ctx.f_x_plus_h_diff.to(device=device)
+            ctx.initial_state_plus_h_diff = ctx.initial_state_plus_h_diff.to(device=device)
+            ctx.contact_pt_x_plus_h_diff = ctx.contact_pt_x_plus_h_diff.to(device=device)
         return env_state_tensor, finite_diff_success_flags, force_that_applied
 
     @staticmethod

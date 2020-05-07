@@ -142,7 +142,8 @@ class BaselineRegressForce(BaseModel):
             resulting_position = resulting_position.unsqueeze(0)  # adding batchsize back because we need it in the loss
             resulting_rotation = resulting_rotation.unsqueeze(0)  # adding batchsize back because we need it in the loss
 
-            all_keypoints = get_keypoint_projection(object_name, resulting_position, resulting_rotation, self.all_objects_keypoint_tensor[object_name])
+            all_keypoints = get_keypoint_projection(object_name, resulting_position, resulting_rotation,
+                                                    self.all_objects_keypoint_tensor[object_name])
             all_keypoints = all_keypoints.unsqueeze(0)  # adding batchsize back because we need it in the loss
             output['keypoints'] = all_keypoints
             output['rotation'] = resulting_rotation

@@ -22,8 +22,13 @@ class BaselineForceDatasetWAugmentation(DatasetWAugmentation):
             item = self.all_possible_data[idx]
             sequence = item['sequence']
             sequence_str = '__'.join(sequence)
-            forces = torch.Tensor(self.predicted_force_dict[sequence_str])
-            labels['forces'] = forces
+            if sequence_str not in self.predicted_force_dict.keys():
+                print(sequence_str, "not found!")
+                raise RuntimeError
+                labels['forces'] = torch.zeros(self.sequence_length - 1, self.number_of_cp, 3)
+            else:
+                forces = torch.Tensor(self.predicted_force_dict[sequence_str])
+                labels['forces'] = forces
         else:
             labels['forces'] = torch.zeros(self.sequence_length - 1, self.number_of_cp, 3)
 

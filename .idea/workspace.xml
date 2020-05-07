@@ -1,22 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="480bbb97-1664-4fc7-91b0-287142fc48d0" name="Default Changelist" comment="Third version of multiprocessing, speed up to 19x.">
+    <list default="true" id="480bbb97-1664-4fc7-91b0-287142fc48d0" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/force.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/force.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/datasets/batch_keypoint_and_trajectory_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/datasets/batch_keypoint_and_trajectory_dataset.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/datasets/baseline_force_dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/datasets/baseline_force_dataset.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_layer.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_physics_layer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/np_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/np_physics_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/subproc_physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/subproc_physics_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/models/batch_image_input_predict_cp_separate_tower.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/models/batch_image_input_predict_cp_separate_tower.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/solvers/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/solvers/train.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/arg_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/arg_parser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/environment_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/environment_util.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/models/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/models/baseline_regress_force.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/models/baseline_regress_force.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/constants.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/net_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/net_util.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/projection_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/projection_utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/doc/force_install.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/force_install.md" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -46,7 +41,7 @@
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/baselines/LukeForce/environments" />
-    <property name="settings.editor.selected.configurable" value="web.server" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
@@ -251,7 +246,10 @@
       <workItem from="1588688187739" duration="1435000" />
       <workItem from="1588690414122" duration="410000" />
       <workItem from="1588729002312" duration="10271000" />
-      <workItem from="1588747442656" duration="4940000" />
+      <workItem from="1588747442656" duration="11691000" />
+      <workItem from="1588766729249" duration="5041000" />
+      <workItem from="1588814102999" duration="4000" />
+      <workItem from="1588817689809" duration="3092000" />
     </task>
     <task id="LOCAL-00001" summary="add the initial baseline of force prediction">
       <created>1587614585804</created>
@@ -302,7 +300,14 @@
       <option name="project" value="LOCAL" />
       <updated>1588735484901</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="Finish multiprocessing. Improve training time.">
+      <created>1588752485836</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1588752485836</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -329,7 +334,8 @@
     <MESSAGE value="Initial version of subprocessing." />
     <MESSAGE value="Second version of multiprocessing. The key issue is that phyenv utilizes too much tensor operation." />
     <MESSAGE value="Third version of multiprocessing, speed up to 19x." />
-    <option name="LAST_COMMIT_MESSAGE" value="Third version of multiprocessing, speed up to 19x." />
+    <MESSAGE value="Finish multiprocessing. Improve training time." />
+    <option name="LAST_COMMIT_MESSAGE" value="Finish multiprocessing. Improve training time." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
