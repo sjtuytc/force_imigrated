@@ -36,7 +36,7 @@ pip install -r requirements.txt
 1. Training command:
 
 ```shell
-# train the full model
+# train the full model (original, no batch processing)
 python main.py --title original_training_debug --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 
 # train the full model with batch processing

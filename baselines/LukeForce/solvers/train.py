@@ -32,7 +32,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
 
     # Iterate over data
     timestamp = time.time()
-    print("Training begin now!")
+    print("Begin train one epoch!")
     for i, (input, target) in enumerate(tqdm.tqdm(data_loader)):
         # Move data to gp[u
         batch_size = input['rgb'].size(0)

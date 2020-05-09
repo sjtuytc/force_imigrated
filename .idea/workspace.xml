@@ -2,12 +2,14 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="480bbb97-1664-4fc7-91b0-287142fc48d0" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/baselines/LukeForce/debug/test_model.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/baselines/LukeForce/models/batch_cp_heatmap_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/force.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/force.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/environments/physics_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/environments/physics_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/baselines/LukeForce/solvers/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/solvers/train.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/arg_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/arg_parser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/baselines/LukeForce/utils/net_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/baselines/LukeForce/utils/net_util.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/doc/force_install.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/force_install.md" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -36,18 +38,18 @@
   <component name="PropertiesComponent">
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/baselines/LukeForce/environments" />
-    <property name="settings.editor.selected.configurable" value="web.server" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/baselines/LukeForce/models" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
-    <key name="MoveFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$" />
-    </key>
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/baselines/LukeForce/models" />
       <recent name="$PROJECT_DIR$/baselines/LukeForce/environments" />
       <recent name="$PROJECT_DIR$/baselines/LukeForce/datasets" />
-      <recent name="$PROJECT_DIR$/baselines/LukeForce/models" />
       <recent name="$PROJECT_DIR$/baselines" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
     </key>
   </component>
   <component name="RunDashboard">
@@ -248,7 +250,11 @@
       <workItem from="1588817689809" duration="3092000" />
       <workItem from="1588835487709" duration="362000" />
       <workItem from="1588836743318" duration="13768000" />
-      <workItem from="1588854838271" duration="939000" />
+      <workItem from="1588854838271" duration="1521000" />
+      <workItem from="1588858886475" duration="6000" />
+      <workItem from="1588926344534" duration="1306000" />
+      <workItem from="1588944772033" duration="98000" />
+      <workItem from="1588990177473" duration="3664000" />
     </task>
     <task id="LOCAL-00001" summary="add the initial baseline of force prediction">
       <created>1587614585804</created>
@@ -320,7 +326,14 @@
       <option name="project" value="LOCAL" />
       <updated>1588845387325</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="Fix bugs in batching net_util.&#10;1) calculating FD.&#10;2) set random seed.">
+      <created>1588856270918</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1588856270918</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -350,7 +363,8 @@
     <MESSAGE value="Finish multiprocessing. Improve training time." />
     <MESSAGE value="Support no gradient paralleling." />
     <MESSAGE value="Fix bugs in np_physics_env.&#10;1) func apply order calculate_surface_normals&#10;2) quaternion to matrix function. Scalar first needs to be transferred to scalar last." />
-    <option name="LAST_COMMIT_MESSAGE" value="Fix bugs in np_physics_env.&#10;1) func apply order calculate_surface_normals&#10;2) quaternion to matrix function. Scalar first needs to be transferred to scalar last." />
+    <MESSAGE value="Fix bugs in batching net_util.&#10;1) calculating FD.&#10;2) set random seed." />
+    <option name="LAST_COMMIT_MESSAGE" value="Fix bugs in batching net_util.&#10;1) calculating FD.&#10;2) set random seed." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
