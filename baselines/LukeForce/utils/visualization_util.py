@@ -23,6 +23,20 @@ def save_image_list_to_gif(image_list, gif_name, gif_dir):
     print('Saved result in ', gif_adr)
 
 
+def load_image_from_disk(full_path=None):
+    return_image = imageio.imread(full_path)
+    return return_image
+
+
+def save_image_to_disk(image_array, save_name, save_dir, full_path=None, verbose=False):
+    if full_path is None:
+        full_path = os.path.join(save_dir, save_name + '.jpg')
+    imageio.imwrite(full_path, image_array)
+    if verbose:
+        print("Image saved at", full_path)
+    return full_path
+
+
 def get_image_list_for_forces(full_output_position, full_output_rotation, force_applied, gt_contact_point, rgb_image,
                               object_name, environment):
     rgb_image = rgb_image[:-1]

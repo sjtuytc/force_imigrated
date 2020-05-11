@@ -44,6 +44,7 @@ ALL_OBJECT_KEYPOINT_PATH = [
 'objects_16k/072-a_toy_airplane/google_16k/textured.urdf_2019_09_30_10_18_15_keypoints.json',
 'objects_16k/077_rubiks_cube/google_16k/textured.urdf_2019_09_30_10_20_24_keypoints.json',
 ]
+
 CHOSEN_OBJECTS = [
     '019_pitcher_base', '021_bleach_cleanser', '027_skillet', '035_power_drill', '048_hammer', '072-a_toy_airplane',
     '005_tomato_soup_can', '006_mustard_bottle'

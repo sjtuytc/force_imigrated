@@ -7,9 +7,6 @@ import tqdm
 
 
 def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
-    import random
-    random.seed(0)
-
     add_to_keys = 'Train'
 
     # Prepare model and optimizer
@@ -34,7 +31,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
     timestamp = time.time()
     print("Begin train one epoch!")
     for i, (input, target) in enumerate(tqdm.tqdm(data_loader)):
-        # Move data to gp[u
+        # Move data to gpu
         batch_size = input['rgb'].size(0)
         if args.gpu_ids != -1:  # if use gpu
             for feature in input:

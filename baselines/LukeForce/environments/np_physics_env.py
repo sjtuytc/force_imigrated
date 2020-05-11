@@ -38,6 +38,12 @@ class NpPhysicsEnv(BaseBulletEnv):
         self.sleep_time = 1
         self.terminated = 0
 
+        # self.view_matrix, self.projection_matrix = \
+        #     (1.0, 0.0, -0.0, 0.0, 0.0, -1.0, -0.0, 0.0, -0.0, 0.0, -1.0, 0.0, -0.0, -0.0, 0.0, 1.0), \
+        #     (0.7499999403953552, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0000200271606445, -1.0, 0.0, 0.0,
+        #      -0.02000020071864128, 0.0)
+        # self.env_intrisinc_matrix = np.matmul(np.array(self.projection_matrix).reshape(4, 4), np.array(self.view_matrix).reshape(4, 4))
+
     def reset(self):
         self.terminated = 0
         self._p.resetSimulation()
@@ -125,22 +131,46 @@ class NpPhysicsEnv(BaseBulletEnv):
         self.reset_base_with_normal_quaternion(bodyUniqueId=object_num, posObj=position, ornObj=rotation)
         self._p.resetBaseVelocity(objectUniqueId=object_num, linearVelocity=velocity, angularVelocity=omega)
 
+    #  implemented by zelin
+    def get_rgb_for_position_rotation(self, object_state, contact_point, object_num=None):
+        if object_num is None:
+            object_num = self.object_of_interest_id
+
+        # convert contact_point by state
+        contact_point = np.array(contact_point)
+
+        # find vertices on mesh using contact points
+        list_of_contact_points = self.find_vertices_on_mesh_using_cp(contact_point)
+        contact_points = self.vertex_points[list_of_contact_points]
+
+        # transform contact_point by rotation and translation
+        contact_points = self.convert_set_of_vertices(contact_points, position=object_state.position,
+                                                        rotation_mat=self.get_rotation_mat(object_state))
+
+        # project into image space
+        projected_cp = np.matmul(self.env_intrisinc_matrix, contact_points)
+
+        # get object rendered image
+        self.update_object_transformations(object_state=object_state, object_num=object_num)
+        img_shot = self.get_rgb()
+        return img_shot
+
     def get_rgb(self, get_matrices=False):
         output_w, output_h = self.qualitative_size, self.qualitative_size
 
         if get_matrices:
 
-            width, height, viewMat, projMat, cameraUp, camForward, horizon, vertical, yaw, pitch, dist, camTarget = self._p.getDebugVisualizerCamera()
+            width, height, view_matrix, projection_matrix, cameraUp, camForward, horizon, vertical, yaw, pitch, dist, camTarget = self._p.getDebugVisualizerCamera()
 
             self._p.resetDebugVisualizerCamera(cameraDistance=1, cameraYaw=yaw, cameraPitch=pitch, cameraTargetPosition=camTarget)
 
-            viewMat = self._p.computeViewMatrix(cameraEyePosition=[0, 0, 0], cameraTargetPosition=[0, 0, 1], cameraUpVector=[0, -1, 0])
+            view_matrix = self._p.computeViewMatrix(cameraEyePosition=[0, 0, 0], cameraTargetPosition=[0, 0, 1], cameraUpVector=[0, -1, 0])
 
-            w, h, rgb, depth, segmmask = self._p.getCameraImage(output_w, output_h, viewMatrix=viewMat, projectionMatrix=projMat)
+            w, h, rgb, depth, segmmask = self._p.getCameraImage(output_w, output_h, viewMatrix=view_matrix, projectionMatrix=projection_matrix)
 
-        viewMat = (1.0, 0.0, -0.0, 0.0, 0.0, -1.0, -0.0, 0.0, -0.0, 0.0, -1.0, 0.0, -0.0, -0.0, 0.0, 1.0)
-        projMat = (0.7499999403953552, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0000200271606445, -1.0, 0.0, 0.0, -0.02000020071864128, 0.0)
-        w, h, rgb, depth, segmmask = self._p.getCameraImage(output_w, output_h, viewMatrix=viewMat, projectionMatrix=projMat)
+        view_matrix = (1.0, 0.0, -0.0, 0.0, 0.0, -1.0, -0.0, 0.0, -0.0, 0.0, -1.0, 0.0, -0.0, -0.0, 0.0, 1.0)
+        projection_matrix = (0.7499999403953552, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0000200271606445, -1.0, 0.0, 0.0, -0.02000020071864128, 0.0)
+        w, h, rgb, depth, segmmask = self._p.getCameraImage(output_w, output_h, viewMatrix=view_matrix, projectionMatrix=projection_matrix)
 
         return rgb[:, :, :3]
 

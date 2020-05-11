@@ -131,6 +131,11 @@ class PhysicsEnv(BaseBulletEnv):
         self.reset_base_with_normal_quaternion(bodyUniqueId=object_num, posObj=position, ornObj=rotation)
         self._p.resetBaseVelocity(objectUniqueId=object_num, linearVelocity=velocity, angularVelocity=omega)
 
+    def get_rgb_for_position_rotation(self, object_state, contact_point, object_num=None):
+        self.update_object_transformations(object_state=object_state, object_num=object_num)
+        img_shot = self.get_rgb()
+        return img_shot
+
     def get_rgb(self, get_matrices=False):
         output_w, output_h = self.qualitative_size, self.qualitative_size
 

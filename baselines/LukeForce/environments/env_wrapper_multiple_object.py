@@ -1,8 +1,13 @@
 # A wrapper that enables supporting multiple objects in one experiment
+from environments.np_physics_env import NpPhysicsEnv
+
+
 class MultipleObjectWrapper:
 
     def __init__(self, environment, render, gravity, debug, number_of_cp, gpu_ids, fps, force_multiplier,
                  force_h, state_h, qualitative_size, object_paths):
+        if environment is None:
+            environment = NpPhysicsEnv
         self.list_of_envs = {}
         self.environment_type, self.number_of_cp, self.force_h, self.state_h, self.qualitative_size = \
             environment, number_of_cp, force_h, state_h, qualitative_size
@@ -21,6 +26,9 @@ class MultipleObjectWrapper:
     def reset(self):
         for obj in self.object_paths:
             self.list_of_envs[obj].reset()
+
+    def get_env_by_obj_name(self, object_name):
+        return self.list_of_envs[object_name]
 
     def init_location_and_apply_force(self, forces, initial_state, object_num=None, list_of_contact_points=None):
         assert list_of_contact_points is not None

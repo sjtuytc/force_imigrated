@@ -7,12 +7,14 @@ from .image_input_predict_cp_separate_tower import SeparateTowerModel
 from .gt_cp_predict_init_pose_and_force import PredictInitPoseAndForce
 from .baseline_regress_force import BaselineRegressForce
 from .no_model_gt_calculator import NoModelGTForceBaseline
+from .batch_cp_heatmap_model import BatchCPHeatmapModel
 __all__ = [
     'ImageAndCPInputKPOutModel',
     'NoForceOnlyCPModel',
     'SeparateTowerModel',
-    'BatchSeparateTowerModel',
+    'BatchSeparateTowerModel',  # support batching for separate tower model
     'BaselineRegressForce',
     'PredictInitPoseAndForce',
     'NoModelGTForceBaseline',
+    'BatchCPHeatmapModel',
 ]

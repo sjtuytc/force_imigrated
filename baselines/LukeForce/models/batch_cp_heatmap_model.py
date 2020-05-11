@@ -66,7 +66,7 @@ class BatchCPHeatmapModel(BaseModel):
 
         self.forces_directions_decoder = input_embedding_net(forces_directions_decoder_size.long().tolist(), dropout=args.dropout_ratio)
 
-        assert args.batch_size == 1, 'have not been implemented yet, because of the environment'
+        assert args.batch_size == 1, 'we do not use more than 1 batch size, but accumulate gradients of several steps.'
 
         assert self.number_of_cp == 5  # for five fingers
         self.all_objects_keypoint_tensor = get_all_objects_keypoint_tensors(args.data)
@@ -98,11 +98,9 @@ class BatchCPHeatmapModel(BaseModel):
         return x
 
     def forward(self, input_dict, target):
-        initial_position = input_dict['initial_position']
-        initial_rotation = input_dict['initial_rotation']
-        rgb = input_dict['rgb']
+        initial_position, initial_rotation, rgb, object_name = \
+            input_dict['initial_position'], input_dict['initial_rotation'], input_dict['rgb'], input_dict['object_name']
         batch_size, seq_len, c, w, h = rgb.shape
-        object_name = input_dict['object_name']
         assert len(object_name) == 1  # only support one object
         object_name = object_name[0]
 
@@ -123,8 +121,8 @@ class BatchCPHeatmapModel(BaseModel):
             batch_size, seq_len, self.number_of_cp, 3)[:, -1, :, :]  # Predict contact point for each image
 
         # Force prediction tower
-        image_features_force = self.image_embed(image_features.view(batch_size * seq_len, 512, 7, 7)).view(
-            batch_size, seq_len, 64 * 7 * 7)
+        image_features_force = \
+            self.image_embed(image_features.view(batch_size * seq_len, 512, 7, 7)).view(batch_size, seq_len, 64 * 7 * 7)
         initial_object_features_force = self.input_object_embed(torch.cat([initial_position, initial_rotation], dim=-1))
         object_features_force = initial_object_features_force.unsqueeze(1).repeat(1, self.sequence_length, 1)
         # add a dimension for sequence length and then repeat that

@@ -146,14 +146,14 @@ def parse_args(log_info=True):
     local_start_time_str = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime(time.time()))
     log_title = args.title + '_' + local_start_time_str
     log_dir = os.path.join(logging_path, log_title)
-    args.qualitative_dir = os.path.join(args.logdir, 'qualitative_plots', log_title)
+    args.qualitative_dir = os.path.join(args.logdir, log_title)
 
     timestamp = str(datetime.datetime.now()).replace(' ', '#').replace(':', '.')
     args.timestamp = timestamp
     args.save = os.path.join(
         args.save, args.model.__name__, log_title, 
         get_non_default_flags_str(args, parser, 'data', 'save', 'model',
-                                  'reload', 'title', 'workers', 'save_frequency', 'batch-size', 'gpu-ids'), timestamp)
+                                  'reload', 'title', 'workers', 'save_frequency', 'batch-size', 'gpu-ids'))
 
     os.makedirs(args.save, exist_ok=True)
     setup_logging(os.path.join(args.save, 'log.txt'), True)

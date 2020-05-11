@@ -44,8 +44,8 @@ class DatasetWAugmentation(data.Dataset):
             cleaned_start_states_json_file = os.path.join(self.root_dir, 'annotations', 'test_cleaned_start_states.json')
         self.cleaned_start_states = _load_transformation_files(cleaned_start_states_json_file)['timestamps']
 
-        object_paths = {obj: os.path.join(self.root_dir, 'objects_16k', obj, 'google_16k', 'textured.urdf') for obj
-                        in self.object_list}
+        self.object_paths = {obj: os.path.join(self.root_dir, 'objects_16k', obj, 'google_16k', 'textured.urdf')
+                             for obj in self.object_list}
 
         self.fps = args.fps
         self.subsample_rate = args.subsample_rate
@@ -54,7 +54,8 @@ class DatasetWAugmentation(data.Dataset):
         environment = MultipleObjectWrapper(environment=environment_type, render=args.render, gravity=args.gravity, debug=args.debug,
                                             number_of_cp=args.number_of_cp, gpu_ids=args.gpu_ids, fps=args.fps,
                                             force_multiplier=args.force_multiplier, force_h=args.force_h,
-                                            state_h=args.state_h, qualitative_size=args.qualitative_size, object_paths=object_paths)
+                                            state_h=args.state_h, qualitative_size=args.qualitative_size,
+                                            object_paths=self.object_paths)
         environment.reset()
         print('done initializing environments')
         args.instance_environment = environment
@@ -166,7 +167,6 @@ class DatasetWAugmentation(data.Dataset):
         time_to_obj_state_fps_this_object = self.time_to_obj_state_fps[obj_name]
         for time in sequence:
             image_path = time_to_clip_ind_image_adr_this_object[time]['image_adr'].replace('LMJTFY/', '')
-
             this_item_dict = time_to_obj_state_fps_this_object[time]
             position = scale_position(this_item_dict['position'], obj_name)
             rotation = this_item_dict['rotation']

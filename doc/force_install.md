@@ -64,6 +64,8 @@ python3 main.py --title test_all_joint_training --sequence_length 10 --gpu-ids 0
 3. debugging command:
 
 ```shell
+# test model
+python debug/test_model.py --title debug_model  --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model BatchCPHeatmapModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 # test physics env (no multiprocessing)
 python debug/test_physics_env.py --title joint_training --sequence_length 10 --gpu-ids -1 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 # test multiprocessing physics env
@@ -71,7 +73,3 @@ python debug/test_subproc_physics_env.py --title joint_training --sequence_lengt
 # test physical layer.
 python debug/test_physics_layer.py --title joint_training --sequence_length 10 --gpu-ids -1 --environment NpPhysicsEnv --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 ```
-
-
-
-DatasetForce/cache/SeparateTowerModel/joint_training_2020-04-27_04:01:46/dataset-DatasetWAugmentation+gpu_ids-[0]+logdir-DatasetForce+loss-KPProjectionCPPredictionLoss+object_list-['ALL']+qualitative_dir-DatasetForce/qualitative_plots/joint_training_2020-04-27_04:01:46/2020-04-27#04.01.46.157735/train.log
