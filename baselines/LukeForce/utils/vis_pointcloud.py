@@ -109,7 +109,7 @@ def vis_multiple(multi_points, save_folder, save_name, normalize=True, save_gif=
 
 if __name__ == '__main__':
     debug_folder = "/Volumes/Macintosh HD/Users/zelinzhao/sensetime/sensetime_results/week5/visualize_projected/v1/"
-    ind = 1000
+    ind = 2000
     vis_3d = read_from_pkl(folder=debug_folder, name=str(ind) + '_vis_3d_metadata')
     # kps = kps / 5
     # cps = read_from_pkl(folder=debug_folder, name=str(ind) + '3d_cp')

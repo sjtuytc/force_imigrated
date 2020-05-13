@@ -9,7 +9,7 @@ from utils.data_loading_utils import load_json_dict, get_time_from_str, scale_po
 
 
 class BatchDatasetWAugmentation(data.Dataset):
-    def __init__(self, args, train=True):
+    def __init__(self, args, environment, train=True):
         self.root_dir = args.data
         self.object_list = args.object_list
         self.number_of_cp = args.number_of_cp
@@ -49,10 +49,11 @@ class BatchDatasetWAugmentation(data.Dataset):
 
         self.fps = args.fps
         self.subsample_rate = args.subsample_rate
-        print('initialize multiprocessing environments')
-        environment = SubprocPhysicsEnv(args=args, object_paths=self.object_paths, context='spawn', nproc=11, nenvs=44)
-        environment.reset()
-        print('done initializing multiprocessing environments')
+        if environment is None:
+            print('initialize multiprocessing environments')
+            environment = SubprocPhysicsEnv(args=args, object_paths=self.object_paths, context='spawn', nproc=11, nenvs=44)
+            environment.reset()
+            print('done initializing multiprocessing environments')
         args.instance_environment = environment
         self.environment = environment
         self.render = args.render

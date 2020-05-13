@@ -6,7 +6,7 @@ from .keypoint_and_trajectory_dataset import DatasetWAugmentation
 class BaselineForceDatasetWAugmentation(DatasetWAugmentation):
     CLASS_WEIGHTS = None
 
-    def __init__(self, args, train=True):
+    def __init__(self, args, environment, train=True):
         super(BaselineForceDatasetWAugmentation, self).__init__(args, train)
         predicted_force_dict_adr = args.predicted_cp_adr
         self.predicted_force_dict = load_json_dict(predicted_force_dict_adr)

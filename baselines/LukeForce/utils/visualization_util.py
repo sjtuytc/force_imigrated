@@ -254,3 +254,18 @@ def add_border_to_images(img_list, pixel=5):
     img[:, :, :, :pixel] = 0
     img[:, :, :, -pixel:] = 0
     return img
+
+
+if __name__ == '__main__':
+    vis_folder = 'debug/'
+    images = []
+    idxs = [0, 1, 2, 3, 1000, 1001, 1002, 1003, 2000, 2001, 2002, 2003, 3000, 3001, 3002, 3003, 4000, 4001, 4002,
+            4003, 5000, 5001, 5002, 5003]
+    for one_idx in idxs:
+        image_name = str(one_idx) + '_projected_model.jpg'
+        file_path = os.path.join(vis_folder, image_name)
+        images.append(imageio.imread(file_path))
+    print(len(images))
+    gif_path = 'debug/projected_model.gif'
+    imageio.mimsave(gif_path, images)
+    print("gif saved at", gif_path)

@@ -121,8 +121,9 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
                                         accuracy_report='\n'.join([ac.final_report() for ac in accuracy_metric])))
         else:
             training_summary = ""
-        logging.info(training_summary)
-        logging.info('Full train result is at {}'.format(
-            os.path.join(args.save, 'train.log')))
-        with open(os.path.join(args.save, 'train.log'), 'a') as fp:
-            fp.write('{}\n'.format(training_summary))
+        if i % 20 == 0 or i == len(data_loader) - 1:
+            logging.info(training_summary)
+            logging.info('Full train result is at {}'.format(
+                os.path.join(args.save, 'train.log')))
+            with open(os.path.join(args.save, 'train.log'), 'a') as fp:
+                fp.write('{}\n'.format(training_summary))

@@ -9,7 +9,7 @@ from utils.data_loading_utils import load_json_dict, get_time_from_str, scale_po
 
 
 class DatasetWAugmentation(data.Dataset):
-    def __init__(self, args, train=True):
+    def __init__(self, args, environment, train=True):
         self.root_dir = args.data
         self.object_list = args.object_list
         self.number_of_cp = args.number_of_cp
@@ -49,15 +49,16 @@ class DatasetWAugmentation(data.Dataset):
 
         self.fps = args.fps
         self.subsample_rate = args.subsample_rate
-        print('initializing environments')
-        environment_type = args.environment
-        environment = MultipleObjectWrapper(environment=environment_type, render=args.render, gravity=args.gravity,
-                                            debug=args.debug, number_of_cp=args.number_of_cp, gpu_ids=args.gpu_ids,
-                                            fps=args.fps, force_multiplier=args.force_multiplier, force_h=args.force_h,
-                                            state_h=args.state_h, qualitative_size=args.qualitative_size,
-                                            object_paths=self.object_paths)
-        environment.reset()
-        print('done initializing environments')
+        if environment is None:
+            print('initializing environments')
+            environment_type = args.environment
+            environment = MultipleObjectWrapper(environment=environment_type, render=args.render, gravity=args.gravity,
+                                                debug=args.debug, number_of_cp=args.number_of_cp, gpu_ids=args.gpu_ids,
+                                                fps=args.fps, force_multiplier=args.force_multiplier, force_h=args.force_h,
+                                                state_h=args.state_h, qualitative_size=args.qualitative_size,
+                                                object_paths=self.object_paths)
+            environment.reset()
+            print('done initializing environments')
         args.instance_environment = environment
         self.environment = environment
         self.render = args.render

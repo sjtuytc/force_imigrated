@@ -9,8 +9,8 @@ from datasets.keypoint_and_trajectory_dataset import DatasetWAugmentation
 class TweakInitialStateDataset(DatasetWAugmentation):
     CLASS_WEIGHTS = None
 
-    def __init__(self, args, train=True):
-        super(TweakInitialStateDataset, self).__init__(args, train)
+    def __init__(self, args, environment, train=True):
+        super(TweakInitialStateDataset, self).__init__(args, environment, train)
         assert args.mode != 'train'
         self.rotation_tweak = args.rotation_tweak
         self.translation_tweak = args.translation_tweak
