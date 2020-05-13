@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as f
 import pdb
+from scipy.spatial.transform import Rotation as R
+import numpy as np
 
 
 def get_quaternion_distance(q1_array, q2_array):
@@ -151,6 +153,17 @@ def quaternion_to_rotation_matrix(quaternion: torch.Tensor) -> torch.Tensor:
     return matrix
 
 
+def np_quaternion_to_rotation_matrix(input_quat):
+    """
+    Numpy version quaternion to rotation matrix.
+    :param input_quat: numpy array, assuming in (w, x, y, z) format.
+    :return: rotation matrix.
+    """
+    # transfer scalar first to scalar last
+    scalar_first = input_quat.tolist()
+    scalar_last = scalar_first[1:] + [scalar_first[0]]
+    quat = R.from_quat(scalar_last)
+    return quat.as_matrix()
 
 
 def angle_axis_to_rotation_matrix(angle_axis):

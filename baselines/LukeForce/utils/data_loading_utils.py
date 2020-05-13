@@ -22,7 +22,7 @@ def scale_position(position, object_name):
     return position * scale
 
 
-def _load_transformation_files(json_file):
+def load_json_dict(json_file):
     with open(json_file) as f:
         json_dict = json.load(f)
     return json_dict

@@ -10,6 +10,7 @@ from utils.obj_util import obtain_all_vertices_from_obj
 from scipy.spatial.transform import Rotation as R
 from utils.environment_util import NpEnvState, NpForceValOnly, build_np_env_state_from_dict
 from utils.constants import OBJECT_TO_SCALE, CONTACT_POINT_MASK_VALUE, GRAVITY_VALUE
+from utils.projection_utils import np_get_cp_projection, np_get_model_vertex_projection, put_keypoints_on_image
 
 
 # physics environment utilizes numpy.
@@ -56,7 +57,7 @@ class NpPhysicsEnv(BaseBulletEnv):
         self.object_of_interest_id, self.vertex_points, self.faces, self.middle_points, self.vertex_to_faces_dict, \
         self.center_of_mass = self.initiate_object(self.object_path)
         self.center_of_mass = np.array(self.center_of_mass)
-        self.vertex_points = self.vertex_points - self.center_of_mass
+        self.vertex_points = self.vertex_points - self.center_of_mass   # * scale - center, normalized vertex points
 
         self.on_plane_points = [self.vertex_to_faces_dict[i][0].tolist() for i in range(len(self.vertex_to_faces_dict))]
         self.on_plane_points = np.array(self.on_plane_points).astype(int)
@@ -130,31 +131,7 @@ class NpPhysicsEnv(BaseBulletEnv):
         omega = object_state.omega
         self.reset_base_with_normal_quaternion(bodyUniqueId=object_num, posObj=position, ornObj=rotation)
         self._p.resetBaseVelocity(objectUniqueId=object_num, linearVelocity=velocity, angularVelocity=omega)
-
-    #  implemented by zelin
-    def get_rgb_for_position_rotation(self, object_state, contact_point, object_num=None):
-        if object_num is None:
-            object_num = self.object_of_interest_id
-
-        # convert contact_point by state
-        contact_point = np.array(contact_point)
-
-        # find vertices on mesh using contact points
-        list_of_contact_points = self.find_vertices_on_mesh_using_cp(contact_point)
-        contact_points = self.vertex_points[list_of_contact_points]
-
-        # transform contact_point by rotation and translation
-        contact_points = self.convert_set_of_vertices(contact_points, position=object_state.position,
-                                                        rotation_mat=self.get_rotation_mat(object_state))
-
-        # project into image space
-        projected_cp = np.matmul(self.env_intrisinc_matrix, contact_points)
-
-        # get object rendered image
-        self.update_object_transformations(object_state=object_state, object_num=object_num)
-        img_shot = self.get_rgb()
-        return img_shot
-
+ 
     def get_rgb(self, get_matrices=False):
         output_w, output_h = self.qualitative_size, self.qualitative_size
 

@@ -172,7 +172,8 @@ class ImageAndCPInputKPOutModel(BaseModel):
         resulting_force_success = resulting_force_success.unsqueeze(0)
         all_force_applied = all_force_applied.unsqueeze(0)
 
-        all_keypoints = get_keypoint_projection(object_name, resulting_position, resulting_rotation, self.all_objects_keypoint_tensor[object_name])
+        all_keypoints = get_keypoint_projection(object_name, resulting_position, resulting_rotation,
+                                                self.all_objects_keypoint_tensor[object_name])
         all_keypoints = all_keypoints.unsqueeze(0)  # adding batchsize back because we need it in the loss
 
         output = {

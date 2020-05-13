@@ -24,13 +24,15 @@ def save_image_list_to_gif(image_list, gif_name, gif_dir):
 
 
 def load_image_from_disk(full_path=None):
-    return_image = imageio.imread(full_path)
+    return_image = imageio.imread(full_path)  # H * W * 3, e.g. 1080 * 1920 * 3
+    return_image = return_image.transpose(1, 0, 2)  # W * H * 3, e.g. 1920 * 1080 * 3
     return return_image
 
 
 def save_image_to_disk(image_array, save_name, save_dir, full_path=None, verbose=False):
     if full_path is None:
         full_path = os.path.join(save_dir, save_name + '.jpg')
+    image_array = image_array.transpose(1, 0, 2)
     imageio.imwrite(full_path, image_array)
     if verbose:
         print("Image saved at", full_path)
@@ -127,8 +129,10 @@ def draw_mesh_overlay(input, output, target, environment):
             image = put_keypoints_on_image(rgb, set_of_points, SIZE_OF_DOT=4, coloring=False)
             return image
 
-        output_mesh_overlay = get_mesh_overlay_projection(object_name, full_output_position[seq_ind], full_output_rotation[seq_ind], non_batched_rgb[seq_ind], environment)
-        target_mesh_overlay = get_mesh_overlay_projection(object_name, full_target_position[seq_ind], full_target_rotation[seq_ind], non_batched_rgb[seq_ind], environment)
+        output_mesh_overlay = get_mesh_overlay_projection(object_name, full_output_position[seq_ind],
+                                                          full_output_rotation[seq_ind], non_batched_rgb[seq_ind], environment)
+        target_mesh_overlay = get_mesh_overlay_projection(object_name, full_target_position[seq_ind],
+                                                          full_target_rotation[seq_ind], non_batched_rgb[seq_ind], environment)
 
         # combine images
         combined_images = torch.stack([target_mesh_overlay, output_mesh_overlay], dim=0)

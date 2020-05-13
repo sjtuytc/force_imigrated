@@ -5,7 +5,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 import pdb
 from environments.subproc_physics_env import SubprocPhysicsEnv
-from utils.data_loading_utils import _load_transformation_files, get_time_from_str, scale_position, process_projection
+from utils.data_loading_utils import load_json_dict, get_time_from_str, scale_position, process_projection
 
 
 class BatchDatasetWAugmentation(data.Dataset):
@@ -23,18 +23,18 @@ class BatchDatasetWAugmentation(data.Dataset):
             name_of_time_to_clip = 'test_time_to_clip_ind.json'
 
         time_to_clip_ind_image_adr_json = os.path.join(self.root_dir, 'annotations', name_of_time_to_clip)
-        self.time_to_clip_ind_image_adr = _load_transformation_files(time_to_clip_ind_image_adr_json)
+        self.time_to_clip_ind_image_adr = load_json_dict(time_to_clip_ind_image_adr_json)
 
         clip_to_contact_point_json_file = os.path.join(self.root_dir, 'annotations', 'clean_clip_to_contact_point.json')
-        self.clip_to_contact_point = _load_transformation_files(clip_to_contact_point_json_file)
+        self.clip_to_contact_point = load_json_dict(clip_to_contact_point_json_file)
 
         time_to_obj_state_fps_json_file = os.path.join(self.root_dir, 'annotations', 'time_to_obj_state_fps_{}.json'.
                                                        format(int(self.fps)))
-        self.time_to_obj_state_fps = _load_transformation_files(time_to_obj_state_fps_json_file)
+        self.time_to_obj_state_fps = load_json_dict(time_to_obj_state_fps_json_file)
 
         time_to_keypoint_fps_json_file = os.path.join(self.root_dir, 'annotations', 'time_to_keypoint_fps_{}.json'.
                                                       format(self.fps))
-        self.time_to_keypoint_fps = _load_transformation_files(time_to_keypoint_fps_json_file)
+        self.time_to_keypoint_fps = load_json_dict(time_to_keypoint_fps_json_file)
 
         if train:
             cleaned_start_states_json_file = os.path.join(self.root_dir, 'annotations', 'train_cleaned_start_states.json')
@@ -42,7 +42,7 @@ class BatchDatasetWAugmentation(data.Dataset):
             cleaned_start_states_json_file = os.path.join(self.root_dir, 'annotations', 'val_cleaned_start_states.json')
         else:
             cleaned_start_states_json_file = os.path.join(self.root_dir, 'annotations', 'test_cleaned_start_states.json')
-        self.cleaned_start_states = _load_transformation_files(cleaned_start_states_json_file)['timestamps']
+        self.cleaned_start_states = load_json_dict(cleaned_start_states_json_file)['timestamps']
 
         self.object_paths = {obj: os.path.join(self.root_dir, 'objects_16k', obj, 'google_16k', 'textured.urdf') for obj
                         in self.object_list}

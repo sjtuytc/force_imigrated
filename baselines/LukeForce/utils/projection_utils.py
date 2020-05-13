@@ -2,8 +2,9 @@ import json
 from utils.constants import ALL_OBJECT_KEYPOINT_NAME, ALL_OBJECTS, OBJECT_TO_SCALE, OBJECT_NAME_TO_CENTER_OF_MASS, DISTORTION, CAMERA_INTRINS_UNNORM, DEFAULT_IMAGE_SIZE
 import pdb
 import torch
-from utils.quaternion_util import quaternion_to_rotation_matrix
+from utils.quaternion_util import quaternion_to_rotation_matrix, np_quaternion_to_rotation_matrix
 import os
+import numpy as np
 
 
 def _get_object_keypoints(object_name, root_path):
@@ -20,10 +21,20 @@ def get_all_objects_keypoint_tensors(dataset_path):
 
 def project_points(points, rotation_mat, translation_mat, camera_intr, distortion):
     k1, k2, p1, p2, k3 = distortion
-    xyz = torch.mm(rotation_mat, points.transpose(0, 1)).transpose(0, 1) + translation_mat
-    x = xyz[:,0]
-    y = xyz[:,1]
-    z = xyz[:,2]
+    use_np = type(points) == np.ndarray
+    if use_np:
+        k1, k2, p1, p2, k3 = np.array(k1), np.array(k2), np.array(p1), np.array(p2), np.array(k3)
+        camera_intr = np.array(camera_intr)
+    if rotation_mat is not None and translation_mat is not None:
+        if use_np:
+            xyz = np.matmul(rotation_mat, points.transpose()).transpose() + translation_mat
+        else:
+            xyz = torch.mm(rotation_mat, points.transpose(0, 1)).transpose(0, 1) + translation_mat
+    else:
+        xyz = points
+    x = xyz[:, 0]
+    y = xyz[:, 1]
+    z = xyz[:, 2]
     xp = x / z
     yp = y / z
     r2 = xp ** 2 + yp ** 2
@@ -34,7 +45,10 @@ def project_points(points, rotation_mat, translation_mat, camera_intr, distortio
     ypp = yp * radial + p1 * (r2 + 2 * yp ** 2) + 2. * p2 * xp * yp
     u = camera_intr[0, 0] * xpp + camera_intr[0, 2]
     v = camera_intr[1, 1] * ypp + camera_intr[1, 2]
-    return torch.stack([u, v], dim=-1)
+    if use_np:
+        return np.stack([u, v], axis=-1)
+    else:
+        return torch.stack([u, v], dim=-1)
 
 
 def reverse_translation_transformation(translation_mat, object_name):
@@ -46,44 +60,57 @@ def reverse_translation_transformation(translation_mat, object_name):
     return translation_mat
 
 
-def get_keypoint_projection(object_name, resulting_positions, resulting_rotations, keypoints):
-    batch_size, seq_len, size = resulting_positions.shape
-    assert batch_size == 1
-    resulting_positions = resulting_positions.squeeze(0)
-    resulting_rotations = resulting_rotations.squeeze(0)
-    # keypoints = ALL_OBJECTS_KEYPOINTS_TENSORS[object_name]
-    if keypoints.device != resulting_positions.device:
-        keypoints = keypoints.to(resulting_positions.device)
-    resulting_positions = reverse_translation_transformation(resulting_positions, object_name)
-    rotation_mats = quaternion_to_rotation_matrix(resulting_rotations)
-    all_projections = []
-    for seq_ind in range(seq_len):
-        rotation_mat = rotation_mats[seq_ind]
-        translation_mat = resulting_positions[seq_ind]
-        result = project_points(keypoints, rotation_mat, translation_mat, CAMERA_INTRINS_UNNORM, DISTORTION)
-        all_projections.append(result)
-    return torch.stack(all_projections, dim=0)
+def np_reverse_translation_transformation(translation_mat, object_name):
+    center_of_mass = np.array(OBJECT_NAME_TO_CENTER_OF_MASS[object_name])
+    translation_mat = np.array(translation_mat)
+    scale = OBJECT_TO_SCALE[object_name]
+    translation_mat = translation_mat / scale + center_of_mass
+    return translation_mat
 
 
-def put_a_dot_on_image(image, point, color, SIZE_OF_DOT):
-    point = torch.round(point).long() + 0. #Copy point
+def put_a_dot_on_image(image, point, color, SIZE_OF_DOT, exchange_xy=True):
+    np_version = type(point) == np.ndarray
+    if np_version:
+        point = point.astype(np.int) + 0 #Copy point
+        if exchange_xy:
+            point = np.array([point[1], point[0]])
+        h, w, c = image.shape
+        ch_first = False
 
-    h, w , c = image.shape
-    ch_first = False
+        if h == 3 and c > 3:
+            c, h, w = image.shape
+            ch_first = True
 
-    if h == 3 and c > 3:
-        c, h, w = image.shape
-        ch_first = True
+        point[0] = max(point[0], 0 + SIZE_OF_DOT)
+        point[0] = min(point[0], w - SIZE_OF_DOT)
+        point[1] = max(point[1], 0 + SIZE_OF_DOT)
+        point[1] = min(point[1], h - SIZE_OF_DOT)
 
-    point[0] = max(point[0], 0 + SIZE_OF_DOT)
-    point[0] = min(point[0], w - SIZE_OF_DOT)
-    point[1] = max(point[1], 0 + SIZE_OF_DOT)
-    point[1] = min(point[1], h - SIZE_OF_DOT)
-
-    if ch_first:
-        image[:, point[1] - SIZE_OF_DOT: point[1] + SIZE_OF_DOT, point[0] - SIZE_OF_DOT: point[0] + SIZE_OF_DOT] = torch.Tensor(color).unsqueeze(1).unsqueeze(2).float()
+        if ch_first:
+            image[:, point[1] - SIZE_OF_DOT: point[1] + SIZE_OF_DOT, point[0] - SIZE_OF_DOT: point[0] + SIZE_OF_DOT] \
+                = np.expand_dims(np.expand_dims(np.array(color), axis=1), axis=2).astype(np.float)
+        else:
+            image[point[1] - SIZE_OF_DOT: point[1] + SIZE_OF_DOT, point[0] - SIZE_OF_DOT: point[0] + SIZE_OF_DOT] = \
+                np.array(color).astype(np.float)
     else:
-        image[point[1] - SIZE_OF_DOT: point[1] + SIZE_OF_DOT, point[0] - SIZE_OF_DOT: point[0] + SIZE_OF_DOT] = torch.Tensor(color).float()
+        point = torch.round(point).long() + 0. #Copy point
+
+        h, w, c = image.shape
+        ch_first = False
+
+        if h == 3 and c > 3:
+            c, h, w = image.shape
+            ch_first = True
+
+        point[0] = max(point[0], 0 + SIZE_OF_DOT)
+        point[0] = min(point[0], w - SIZE_OF_DOT)
+        point[1] = max(point[1], 0 + SIZE_OF_DOT)
+        point[1] = min(point[1], h - SIZE_OF_DOT)
+
+        if ch_first:
+            image[:, point[1] - SIZE_OF_DOT: point[1] + SIZE_OF_DOT, point[0] - SIZE_OF_DOT: point[0] + SIZE_OF_DOT] = torch.Tensor(color).unsqueeze(1).unsqueeze(2).float()
+        else:
+            image[point[1] - SIZE_OF_DOT: point[1] + SIZE_OF_DOT, point[0] - SIZE_OF_DOT: point[0] + SIZE_OF_DOT] = torch.Tensor(color).float()
 
 
 def convert_to_color(kp_ind):
@@ -102,22 +129,41 @@ def convert_to_color(kp_ind):
     return all_colors[kp_ind]
 
 
-def put_keypoints_on_image(image, keypoints, SIZE_OF_DOT=5, coloring=True):
-    image = image + 0. #Copy image
-    w, h, c = image.shape
-    if w == 3:
-        c, w, h = image.shape
-    image_shape = torch.Tensor([w, h]).float()
-    image_size = DEFAULT_IMAGE_SIZE
-    if image_size.device != keypoints.device:
-        image_size = image_size.to(keypoints.device)
-    converted_keypoints = keypoints / image_size * image_shape
-    for kp_ind in range(converted_keypoints.shape[0]):
-        if coloring:
-            color = convert_to_color(kp_ind)
-        else:
-            color = convert_to_color(1)
-        put_a_dot_on_image(image, converted_keypoints[kp_ind], color, SIZE_OF_DOT)
+def put_keypoints_on_image(image, keypoints, SIZE_OF_DOT=5, coloring=True, exchange_x_y=True):
+    np_version = type(keypoints) == np.ndarray
+    if np_version:
+        image = image + 0. #Copy image
+        w, h, c = image.shape
+        if w == 3:
+            c, w, h = image.shape
+        image_shape = np.array([w, h]).astype(np.float)
+        image_size = np.array(DEFAULT_IMAGE_SIZE)
+        converted_keypoints = keypoints / image_size * image_shape
+        for kp_ind in range(converted_keypoints.shape[0]):
+            if coloring:
+                color = convert_to_color(kp_ind % 10)
+            else:
+                color = convert_to_color(1)
+            color = np.array(color)
+            if image.max() > 1.0:
+                color *= 255
+            put_a_dot_on_image(image, converted_keypoints[kp_ind], color, SIZE_OF_DOT, exchange_xy=exchange_x_y)
+    else:
+        image = image + 0. #Copy image
+        w, h, c = image.shape
+        if w == 3:
+            c, w, h = image.shape
+        image_shape = torch.Tensor([w, h]).float()
+        image_size = DEFAULT_IMAGE_SIZE
+        if image_size.device != keypoints.device:
+            image_size = image_size.to(keypoints.device)
+        converted_keypoints = keypoints / image_size * image_shape
+        for kp_ind in range(converted_keypoints.shape[0]):
+            if coloring:
+                color = convert_to_color(kp_ind % 10)
+            else:
+                color = convert_to_color(1)
+            put_a_dot_on_image(image, converted_keypoints[kp_ind], color, SIZE_OF_DOT)
     return image
 
 
@@ -139,5 +185,68 @@ def get_set_of_vertices_projection(environment, resulting_positions, resulting_r
     translation_mat = reverse_translation_transformation(resulting_positions, environment.object_name)
     rotation_mat = quaternion_to_rotation_matrix(resulting_rotations.unsqueeze(0)).squeeze(0)
     result = project_points(set_of_points, rotation_mat, translation_mat, CAMERA_INTRINS_UNNORM, DISTORTION)
+    return result
 
+
+def get_keypoint_projection(object_name, resulting_positions, resulting_rotations, keypoints):
+    batch_size, seq_len, size = resulting_positions.shape
+    assert batch_size == 1
+    resulting_positions = resulting_positions.squeeze(0)
+    resulting_rotations = resulting_rotations.squeeze(0)
+    # keypoints = ALL_OBJECTS_KEYPOINTS_TENSORS[object_name]
+    if keypoints.device != resulting_positions.device:
+        keypoints = keypoints.to(resulting_positions.device)
+    resulting_positions = reverse_translation_transformation(resulting_positions, object_name)
+    rotation_mats = quaternion_to_rotation_matrix(resulting_rotations)
+    all_projections = []
+    for seq_ind in range(seq_len):
+        rotation_mat = rotation_mats[seq_ind]
+        translation_mat = resulting_positions[seq_ind]
+        result = project_points(keypoints, rotation_mat, translation_mat, CAMERA_INTRINS_UNNORM, DISTORTION)
+        all_projections.append(result)
+    return torch.stack(all_projections, dim=0)
+
+
+# implemented by Zelin
+def np_get_keypoint_projection(object_name, position, rotation, keypoints):
+    position, rotation, keypoints = np.array(position), np.array(rotation), np.array(keypoints)
+
+    # change translation matrix, we should not move center_of_mass
+    scale = OBJECT_TO_SCALE[object_name]
+    # center_of_mass = np.array(OBJECT_NAME_TO_CENTER_OF_MASS[object_name])
+    # position = position / scale + center_of_mass
+    position = position / scale
+
+    # position = np_reverse_translation_transformation(translation_mat=position, object_name=object_name)
+    rotation_mat = np_quaternion_to_rotation_matrix(rotation)
+    result = project_points(keypoints, rotation_mat, position, CAMERA_INTRINS_UNNORM, DISTORTION)
+    return result
+
+
+# implemented by Zelin
+def np_get_cp_projection(set_of_points, center_of_mass, object_name, position, rotation):
+    set_of_points, position, rotation = np.array(set_of_points), np.array(position), np.array(rotation)
+    set_of_points = set_of_points / OBJECT_TO_SCALE[object_name]
+
+    # change translation matrix, we should not move center_of_mass
+    scale = OBJECT_TO_SCALE[object_name]
+    position = position / scale
+    rotation_matrix = np_quaternion_to_rotation_matrix(rotation)
+    result = project_points(set_of_points, rotation_matrix, position, CAMERA_INTRINS_UNNORM, DISTORTION)
+    return result
+
+
+# implemented by Zelin
+def np_get_model_vertex_projection(set_of_points, center_of_mass, object_name, position, rotation):
+    set_of_points, position, rotation = np.array(set_of_points), np.array(position), np.array(rotation)
+    set_of_points = (set_of_points + center_of_mass) / OBJECT_TO_SCALE[object_name]
+
+    # change translation matrix, we should not move center_of_mass
+    scale = OBJECT_TO_SCALE[object_name]
+    # center_of_mass = np.array(OBJECT_NAME_TO_CENTER_OF_MASS[object_name])
+    # position = position / scale + center_of_mass
+    position = position / scale
+
+    rotation_matrix = np_quaternion_to_rotation_matrix(rotation)
+    result = project_points(set_of_points, rotation_matrix, position, CAMERA_INTRINS_UNNORM, DISTORTION)
     return result
