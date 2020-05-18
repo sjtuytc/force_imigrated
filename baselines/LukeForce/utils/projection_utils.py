@@ -51,7 +51,7 @@ def project_points(points, rotation_mat, translation_mat, camera_intr, distortio
         return torch.stack([u, v], dim=-1)
 
 
-def reverse_translation_transformation(translation_mat, object_name, add_center=False):  # modified here!
+def reverse_translation_transformation(translation_mat, object_name, add_center=True):
     center_of_mass = OBJECT_NAME_TO_CENTER_OF_MASS[object_name]
     if center_of_mass.device != translation_mat.device:
         center_of_mass = center_of_mass.to(translation_mat.device)
