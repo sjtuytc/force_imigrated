@@ -87,7 +87,6 @@ def main():
     random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-
     logging.info('Reading dataset metadata.')
     train_loader, val_loader = get_dataset(args)
 

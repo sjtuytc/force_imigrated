@@ -30,8 +30,10 @@ def load_image_from_disk(full_path=None):
 
 
 def save_image_to_disk(image_array, save_name, save_dir, full_path=None, verbose=False):
+    if '.jpg' not in save_name and '.jpeg' not in save_name and '.png' not in save_name:
+        save_name += '.jpg'
     if full_path is None:
-        full_path = os.path.join(save_dir, save_name + '.jpg')
+        full_path = os.path.join(save_dir, save_name)
     image_array = image_array.transpose(1, 0, 2)
     imageio.imwrite(full_path, image_array)
     if verbose:

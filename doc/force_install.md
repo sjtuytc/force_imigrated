@@ -31,7 +31,15 @@ tar xvzf force_cvpr2020_trained_weights.tar.gz
 pip install -r requirements.txt
 ```
 
-## Sec2: training/testing
+## Sec2: data generation
+
+```shell
+python data_generator/gen_rgb_obj_coordinates.py --title gen_data --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model BatchCPHeatmapModel --environment NpPhysicsEnv --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
+```
+
+
+
+## Sec3: training/testing
 
 1. Training command:
 
@@ -41,6 +49,9 @@ python main.py --title original_training_debug --sequence_length 10 --gpu-ids 0 
 
 # train the full model with batch processing
 python main.py --title batch_joint_training_v2 --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchSeparateTowerModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
+
+# train the full model with attention
+python main.py --title attention_v1 --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchCPHeatmapModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 
 # only predict contact point.
 python main.py --title train_cp_prediction --batch-size 1 --workers 10 --gpu-ids 0 --number_of_cp 5 --model NoForceOnlyCPModel --dataset DatasetWAugmentation --loss CPPredictionLoss --object_list ALL --break-batch 1 --data DatasetForce train

@@ -9,12 +9,12 @@ from utils.data_loading_utils import load_json_dict, get_time_from_str, scale_po
 
 
 class BatchDatasetWAugmentation(data.Dataset):
-    def __init__(self, args, environment, train=True):
+    def __init__(self, args, environment, load_syn=False, bbox_gt=True, scale=512, train=True):
+        # in original paper, scale is 224
         self.root_dir = args.data
         self.object_list = args.object_list
         self.number_of_cp = args.number_of_cp
         self.fps = args.fps
-
         if train:
             name_of_time_to_clip = 'train_time_to_clip_ind.json'
         elif args.use_val:
@@ -36,6 +36,16 @@ class BatchDatasetWAugmentation(data.Dataset):
                                                       format(self.fps))
         self.time_to_keypoint_fps = load_json_dict(time_to_keypoint_fps_json_file)
 
+        if bbox_gt:
+            if train:
+                time_to_bbox_file = os.path.join(self.root_dir, 'annotations', 'train_syn_time_to_bbox.json')
+            else:
+                time_to_bbox_file = os.path.join(self.root_dir, 'annotations', 'test_syn_time_to_bbox.json')
+            self.time_to_bbox = load_json_dict(time_to_bbox_file)
+        else:
+            self.time_to_bbox = None
+        self.bbox_gt = bbox_gt
+
         if train:
             cleaned_start_states_json_file = os.path.join(self.root_dir, 'annotations', 'train_cleaned_start_states.json')
         elif args.use_val:
@@ -45,7 +55,7 @@ class BatchDatasetWAugmentation(data.Dataset):
         self.cleaned_start_states = load_json_dict(cleaned_start_states_json_file)['timestamps']
 
         self.object_paths = {obj: os.path.join(self.root_dir, 'objects_16k', obj, 'google_16k', 'textured.urdf') for obj
-                        in self.object_list}
+                             in self.object_list}
 
         self.fps = args.fps
         self.subsample_rate = args.subsample_rate
@@ -57,10 +67,11 @@ class BatchDatasetWAugmentation(data.Dataset):
         args.instance_environment = environment
         self.environment = environment
         self.render = args.render
+        self.scale = scale
         if train:
             assert args.dropout_ratio > 0
             self.transform = transforms.Compose([
-                transforms.Scale((224, 224)),
+                transforms.Scale((self.scale, self.scale)),
                 # transforms.RandomGrayscale(p=0.3),
                 transforms.ColorJitter(hue=.05, saturation=.05, brightness=0.05),
                 transforms.ToTensor(),
@@ -68,12 +79,13 @@ class BatchDatasetWAugmentation(data.Dataset):
             ])
         else:
             self.transform = transforms.Compose([
-                transforms.Scale((224, 224)),
+                transforms.Scale((self.scale, self.scale)),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ])
-        self.image_size = 224
+        self.image_size = self.scale
         self.sequence_length = args.sequence_length
+        self.load_syn = load_syn
 
         print('Get object sequences.')
         self.all_possible_data = self.get_possible_object_sequences()
@@ -158,18 +170,24 @@ class BatchDatasetWAugmentation(data.Dataset):
         all_images = []
         all_keypoints = []
         all_image_paths = []
+        all_bbox = []
 
         time_to_clip_ind_image_adr_this_object = self.time_to_clip_ind_image_adr[obj_name]
         time_to_obj_state_fps_this_object = self.time_to_obj_state_fps[obj_name]
         for time in sequence:
             image_path = time_to_clip_ind_image_adr_this_object[time]['image_adr'].replace('LMJTFY/', '')
-
             this_item_dict = time_to_obj_state_fps_this_object[time]
             position = scale_position(this_item_dict['position'], obj_name)
             rotation = this_item_dict['rotation']
             real_img_path = os.path.join(self.root_dir, image_path)
             all_image_paths.append(real_img_path)
             rgb = self.load_and_resize(real_img_path)
+            # syn_rgb = self.load_and_resize(real_img_path)
+            if self.bbox_gt:
+                one_box = self.time_to_bbox[obj_name][time]['bbox']
+                all_bbox.append(one_box)
+            else:
+                all_bbox.append([])
             all_rotations.append(rotation)
             all_translations.append(position)
             all_images.append(rgb)
@@ -177,14 +195,13 @@ class BatchDatasetWAugmentation(data.Dataset):
             keypoint_annot = {}
             if time in time_to_keypoint_this_object:
                 keypoint_annot = time_to_keypoint_this_object[time]
-
             all_keypoints.append(process_projection(keypoint_annot))
 
         all_rotations = torch.Tensor(all_rotations).float()
         all_keypoints = torch.Tensor(all_keypoints).float()
+        all_bbox = torch.Tensor(all_bbox).long()
         all_translations = torch.stack(all_translations, dim=0).float()
         all_images = torch.stack(all_images, dim=0)
-
         input = {
             'rgb': all_images,
             'image_paths': all_image_paths,
@@ -194,6 +211,7 @@ class BatchDatasetWAugmentation(data.Dataset):
             'object_name': obj_name,
             'contact_points': contact_point,
             'timestamps': sequence,
+            'initial_bbox': all_bbox[0],
         }
 
         labels = {
@@ -201,6 +219,7 @@ class BatchDatasetWAugmentation(data.Dataset):
             'position': all_translations[1:],
             'rotation': all_rotations[1:],
             'contact_points': contact_point,
+            'bboxes': all_bbox[1:],
         }
 
         return input, labels

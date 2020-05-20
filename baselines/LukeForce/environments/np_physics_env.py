@@ -20,9 +20,9 @@ class NpPhysicsEnv(BaseBulletEnv):
                  force_h, state_h, qualitative_size, workers=0, gpu_ids=None):
         gpu_ids = -1  #  we forbid using GPU when running a single phy env, this is faster.
         self.render, self.object_path, self.object_name, self.gravity, self.debug, self.number_of_cp, \
-            self.fps, self.force_multiplier, self.force_h, self.state_h, self.qualitative_size = \
+            self.fps, self.force_multiplier, self.force_h, self.state_h = \
             render, object_path, object_name, gravity, debug, number_of_cp, fps, force_multiplier, force_h, \
-            state_h, qualitative_size
+            state_h
         super(NpPhysicsEnv, self).__init__(render=render)
         assert not render or workers == 0, 'only support one worker for rendering.'   # consider deprecate worker
         self._pb_urdf_root = pybullet_data.getDataPath()
@@ -39,6 +39,7 @@ class NpPhysicsEnv(BaseBulletEnv):
         self.sleep_time = 1
         self.terminated = 0
 
+        self.vis_w, self.vis_h = 1920, 1080
         # self.view_matrix, self.projection_matrix = \
         #     (1.0, 0.0, -0.0, 0.0, 0.0, -1.0, -0.0, 0.0, -0.0, 0.0, -1.0, 0.0, -0.0, -0.0, 0.0, 1.0), \
         #     (0.7499999403953552, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0000200271606445, -1.0, 0.0, 0.0,
@@ -124,7 +125,8 @@ class NpPhysicsEnv(BaseBulletEnv):
         self._p.resetBasePositionAndOrientation(bodyUniqueId=bodyUniqueId, posObj=posObj, ornObj=ornObj)
 
     def update_object_transformations(self, object_state, object_num, hand_pose=None):
-
+        if object_num is None:
+            object_num = self.object_of_interest_id
         rotation = object_state.rotation
         position = object_state.position
         velocity = object_state.velocity
@@ -133,7 +135,7 @@ class NpPhysicsEnv(BaseBulletEnv):
         self._p.resetBaseVelocity(objectUniqueId=object_num, linearVelocity=velocity, angularVelocity=omega)
  
     def get_rgb(self, get_matrices=False):
-        output_w, output_h = self.qualitative_size, self.qualitative_size
+        output_w, output_h = self.vis_w, self.vis_h
 
         if get_matrices:
 

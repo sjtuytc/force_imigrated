@@ -5,6 +5,7 @@ from .base_model import BaseModel
 from utils.net_util import input_embedding_net, combine_block_w_do, BatchCPGradientLayer
 
 from torchvision.models.resnet import resnet18
+from torchvision.ops.roi_pool import roi_pool
 from solvers import metrics
 from utils.environment_util import EnvState
 from utils.projection_utils import get_keypoint_projection, get_all_objects_keypoint_tensors
@@ -74,10 +75,12 @@ class BatchCPHeatmapModel(BaseModel):
             for obj, val in self.all_objects_keypoint_tensor.items():
                 self.all_objects_keypoint_tensor[obj] = val.cuda()
 
+        self.ori_w, self.ori_h = 1920, 1080
+
     def loss(self, args):
         return self.loss_function(args)
 
-    def resnet_features(self, x):
+    def resnet_features(self, x, bbox):
         self.feature_extractor.eval()
         with torch.no_grad():
             batch_size, seq_len, c, w, h = x.shape
@@ -87,6 +90,12 @@ class BatchCPHeatmapModel(BaseModel):
             x = self.feature_extractor.relu(x)
             x = self.feature_extractor.maxpool(x)
 
+            seq_len, c, w, h = x.shape
+            bbox = bbox.squeeze()
+            scaled_bbox = [bbox[0].float() / self.ori_w * w, bbox[1].float() / self.ori_h * h,
+                           bbox[2].float() / self.ori_w * w, bbox[3].float() / self.ori_h * h]
+            scaled_bbox = torch.stack(scaled_bbox)
+            x = roi_pool(x, [scaled_bbox.unsqueeze(0) for i in range(len(x))], (56, 56))
             x = self.feature_extractor.layer1(x)
             x = self.feature_extractor.layer2(x)
             x = self.feature_extractor.layer3(x)
@@ -98,13 +107,12 @@ class BatchCPHeatmapModel(BaseModel):
         return x
 
     def forward(self, input_dict, target):
-        initial_position, initial_rotation, rgb, object_name = \
-            input_dict['initial_position'], input_dict['initial_rotation'], input_dict['rgb'], input_dict['object_name']
+        initial_position, initial_rotation, rgb, object_name, initial_bbox = \
+            input_dict['initial_position'], input_dict['initial_rotation'], input_dict['rgb'], input_dict['object_name'], input_dict['initial_bbox']
         batch_size, seq_len, c, w, h = rgb.shape
         assert len(object_name) == 1  # only support one object
         object_name = object_name[0]
-
-        image_features = self.resnet_features(rgb)
+        image_features = self.resnet_features(rgb, initial_bbox)
 
         # Contact point prediction tower
         image_features_contact_point = self.contact_point_image_embed(

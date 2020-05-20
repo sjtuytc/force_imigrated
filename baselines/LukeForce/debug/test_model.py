@@ -18,7 +18,7 @@ from utils.data_io import save_into_pkl
 from utils.projection_utils import *
 
 
-def visualize_input_data(dataset, visualize_ind, ):
+def visualize_input_data(dataset, visualize_ind, environment):
     input_data, target = dataset[visualize_ind]
     # ----input data shapes----
     # 'rgb' tensor: [seq len, 3, 224, 224]; 'initial_position' tensor: [3];
@@ -33,7 +33,7 @@ def visualize_input_data(dataset, visualize_ind, ):
     # full_path = save_image_to_disk(image_array=loaded_image, save_name='input_rgb', save_dir=debug_folder)
     # print('Input image saved at ', full_path, ".")
 
-    # vis_env = environment.get_env_by_obj_name(object_name=input_data['object_name'])
+    vis_env = environment.get_env_by_obj_name(object_name=input_data['object_name'])
 
     # # visualize 3D model points
     # vis_3d = {'mp': np.array(vis_env.vertex_points), 'cp': np.array(input_data['contact_points']),
@@ -42,12 +42,13 @@ def visualize_input_data(dataset, visualize_ind, ):
     # save_into_pkl(vis_3d, folder=debug_folder, name=str(one_idx) + "_vis_3d_metadata", verbose=True)
 
     # # visualize projected model points
-    # projected_all = np_get_model_vertex_projection(set_of_points=vis_env.vertex_points, center_of_mass=vis_env.center_of_mass,
-    #                                                object_name=input_data['object_name'],
-    #                                                position=np.array(input_data['initial_position']),
-    #                                                rotation=input_data['initial_rotation'])
-    # image_with_all = put_keypoints_on_image(image=loaded_image, keypoints=projected_all, coloring=True,
-    #                                         SIZE_OF_DOT=5, exchange_x_y=True)
+    projected_all = np_get_model_vertex_projection(set_of_points=vis_env.vertex_points,
+                                                   center_of_mass=vis_env.center_of_mass,
+                                                   object_name=input_data['object_name'],
+                                                   position=np.array(input_data['initial_position']),
+                                                   rotation=input_data['initial_rotation'])
+    image_with_all = put_keypoints_on_image(image=loaded_image, keypoints=projected_all, coloring=True,
+                                            SIZE_OF_DOT=5, exchange_x_y=True)
     # simu_path = save_image_to_disk(image_array=image_with_all, save_name=str(one_idx) + '_projected_model', save_dir=debug_folder)
     # print("Image with all model points saved at ", simu_path, ".")
 
@@ -102,9 +103,9 @@ def train_one_data(model, loss, optimizer, test_dataset, args):
 
     # data_idx = [2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008]
     # for one_idx in data_idx:
-    #     visualize_input_data(test_dataset, one_idx)
+    #     visualize_input_data(test_dataset, one_idx, environment)
 
-    # add bs in dims.
+    # add bs in dims
     input_data, target = test_dataset[0]
     batch_size = 1
     input_data['rgb'], input_data['initial_position'], input_data['initial_rotation'] = \
@@ -159,7 +160,7 @@ def train_one_data(model, loss, optimizer, test_dataset, args):
 
 def get_dataset(args):
     print("Create training dataset.")
-    debug_dataset = args.dataset(args, environment=None, train=True)
+    debug_dataset = args.dataset(args, environment=None, train=True, bbox_gt=True, scale=512)
     return debug_dataset
 
 
