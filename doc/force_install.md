@@ -35,6 +35,8 @@ pip install -r requirements.txt
 
 ```shell
 python data_generator/gen_rgb_obj_coordinates.py --title gen_data --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model BatchCPHeatmapModel --environment NpPhysicsEnv --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
+
+python data_generator/
 ```
 
 
@@ -45,7 +47,7 @@ python data_generator/gen_rgb_obj_coordinates.py --title gen_data --sequence_len
 
 ```shell
 # train the full model (original, no batch processing)
-python main.py --title original_training_debug --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
+python main.py --title original_training --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 
 # train the full model with batch processing
 python main.py --title batch_joint_training_v2 --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchSeparateTowerModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train

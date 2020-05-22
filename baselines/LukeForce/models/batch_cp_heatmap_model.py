@@ -2,9 +2,9 @@ import torch
 import time
 import torch.nn as nn
 from .base_model import BaseModel
+from .resnet import resnet18
 from utils.net_util import input_embedding_net, combine_block_w_do, BatchCPGradientLayer
 
-from torchvision.models.resnet import resnet18
 from torchvision.ops.roi_pool import roi_pool
 from solvers import metrics
 from utils.environment_util import EnvState
@@ -23,6 +23,8 @@ class BatchCPHeatmapModel(BaseModel):
     def __init__(self, args):
         super(BatchCPHeatmapModel, self).__init__(args)
 
+        self.use_syn = args.use_syn
+        self.ori_w, self.ori_h = 1920, 1080
         self.environment_layer = BatchCPGradientLayer
         self.loss_function = args.loss
         self.relu = nn.LeakyReLU()
@@ -43,8 +45,9 @@ class BatchCPHeatmapModel(BaseModel):
         self.input_feature_size = self.object_feature_size
         self.cp_feature_size = self.number_of_cp * 3
 
-        self.image_embed = combine_block_w_do(512, 64, args.dropout_ratio)
-        self.contact_point_image_embed = combine_block_w_do(512, 64, args.dropout_ratio)
+        plane_dim = 1024 if self.use_syn else 512
+        self.image_embed = combine_block_w_do(plane_dim, 64, args.dropout_ratio)
+        self.contact_point_image_embed = combine_block_w_do(plane_dim, 64, args.dropout_ratio)
 
         input_object_embed_size = torch.Tensor([3 + 4, 100, self.object_feature_size])
         self.input_object_embed = input_embedding_net(input_object_embed_size.long().tolist(), dropout=args.dropout_ratio)
@@ -75,13 +78,12 @@ class BatchCPHeatmapModel(BaseModel):
             for obj, val in self.all_objects_keypoint_tensor.items():
                 self.all_objects_keypoint_tensor[obj] = val.cuda()
 
-        self.ori_w, self.ori_h = 1920, 1080
-
     def loss(self, args):
         return self.loss_function(args)
 
     def resnet_features(self, x, bbox):
         self.feature_extractor.eval()
+        output_dim = 512
         with torch.no_grad():
             batch_size, seq_len, c, w, h = x.shape
             x = x.view(batch_size * seq_len, c, w, h)
@@ -101,7 +103,7 @@ class BatchCPHeatmapModel(BaseModel):
             x = self.feature_extractor.layer3(x)
             x = self.feature_extractor.layer4(x)
 
-            x = x.view(batch_size, seq_len, 512, 7, 7)
+            x = x.view(batch_size, seq_len, output_dim, 7, 7)
             x = x.detach()
 
         return x
@@ -109,14 +111,17 @@ class BatchCPHeatmapModel(BaseModel):
     def forward(self, input_dict, target):
         initial_position, initial_rotation, rgb, object_name, initial_bbox = \
             input_dict['initial_position'], input_dict['initial_rotation'], input_dict['rgb'], input_dict['object_name'], input_dict['initial_bbox']
+        syn_rgb = input_dict['syn_rgb']
         batch_size, seq_len, c, w, h = rgb.shape
         assert len(object_name) == 1  # only support one object
         object_name = object_name[0]
         image_features = self.resnet_features(rgb, initial_bbox)
-
+        if self.use_syn:
+            syn_image_features = self.resnet_features(syn_rgb, initial_bbox)
+            image_features = torch.cat([image_features, syn_image_features], 2)
         # Contact point prediction tower
         image_features_contact_point = self.contact_point_image_embed(
-            image_features.view(batch_size * seq_len, 512, 7, 7)).view(batch_size, seq_len, 64 * 7 * 7)
+            image_features.view(batch_size * seq_len, -1, 7, 7)).view(batch_size, seq_len, 64 * 7 * 7)
         initial_object_features_contact_point = \
             self.contact_point_input_object_embed(torch.cat([initial_position, initial_rotation], dim=-1))
         object_features_contact_point = initial_object_features_contact_point.unsqueeze(1).\
@@ -130,7 +135,7 @@ class BatchCPHeatmapModel(BaseModel):
 
         # Force prediction tower
         image_features_force = \
-            self.image_embed(image_features.view(batch_size * seq_len, 512, 7, 7)).view(batch_size, seq_len, 64 * 7 * 7)
+            self.image_embed(image_features.view(batch_size * seq_len, -1, 7, 7)).view(batch_size, seq_len, 64 * 7 * 7)
         initial_object_features_force = self.input_object_embed(torch.cat([initial_position, initial_rotation], dim=-1))
         object_features_force = initial_object_features_force.unsqueeze(1).repeat(1, self.sequence_length, 1)
         # add a dimension for sequence length and then repeat that

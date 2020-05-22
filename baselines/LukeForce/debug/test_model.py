@@ -114,6 +114,7 @@ def train_one_data(model, loss, optimizer, test_dataset, args):
         input_data['initial_keypoint'].unsqueeze(0), [input_data['object_name']], \
         input_data['contact_points'].unsqueeze(0), \
         [input_data['timestamps']]
+    input_data['syn_rgb'] = input_data['syn_rgb'].unsqueeze(0)
     target['keypoints'], target['position'], target['rotation'], target['contact_points'] = \
         target['keypoints'].unsqueeze(0), target['position'].unsqueeze(0), target['rotation'].unsqueeze(0), \
         target['contact_points'].unsqueeze(0)

@@ -9,7 +9,7 @@ from utils.data_loading_utils import load_json_dict, get_time_from_str, scale_po
 
 
 class BatchDatasetWAugmentation(data.Dataset):
-    def __init__(self, args, environment, load_syn=False, bbox_gt=True, scale=512, train=True):
+    def __init__(self, args, environment, bbox_gt=True, scale=512, train=True):
         # in original paper, scale is 224
         self.root_dir = args.data
         self.object_list = args.object_list
@@ -85,7 +85,7 @@ class BatchDatasetWAugmentation(data.Dataset):
             ])
         self.image_size = self.scale
         self.sequence_length = args.sequence_length
-        self.load_syn = load_syn
+        self.use_syn = args.use_syn
 
         print('Get object sequences.')
         self.all_possible_data = self.get_possible_object_sequences()
@@ -168,6 +168,7 @@ class BatchDatasetWAugmentation(data.Dataset):
         all_rotations = []
         all_translations = []
         all_images = []
+        all_syn_images = []
         all_keypoints = []
         all_image_paths = []
         all_bbox = []
@@ -182,7 +183,11 @@ class BatchDatasetWAugmentation(data.Dataset):
             real_img_path = os.path.join(self.root_dir, image_path)
             all_image_paths.append(real_img_path)
             rgb = self.load_and_resize(real_img_path)
-            # syn_rgb = self.load_and_resize(real_img_path)
+            if self.use_syn:
+                prefix, fname = os.path.split(real_img_path)
+                syn_path = os.path.join(prefix.replace('images', 'synthetic'), 'syn_' + fname)
+                syn_rgb = self.load_and_resize(syn_path)
+                all_syn_images.append(syn_rgb)
             if self.bbox_gt:
                 one_box = self.time_to_bbox[obj_name][time]['bbox']
                 all_bbox.append(one_box)
@@ -202,8 +207,10 @@ class BatchDatasetWAugmentation(data.Dataset):
         all_bbox = torch.Tensor(all_bbox).long()
         all_translations = torch.stack(all_translations, dim=0).float()
         all_images = torch.stack(all_images, dim=0)
+        all_syn_images = torch.stack(all_syn_images, dim=0)
         input = {
             'rgb': all_images,
+            'syn_rgb': all_syn_images,
             'image_paths': all_image_paths,
             'initial_position': all_translations[0],
             'initial_rotation': all_rotations[0],
