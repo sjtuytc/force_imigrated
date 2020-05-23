@@ -39,7 +39,7 @@ def test_original():
 
     print("Test infer time.")
     bt = time.time()
-    for i in range(2000):
+    for i in range(1024):
         phy_env.batch_init_locations_and_apply_force(batch_data=batch_test_data)
     total_time = time.time() - bt
     print("Consuming time: ", total_time)

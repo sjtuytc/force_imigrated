@@ -9,7 +9,7 @@ from utils.data_loading_utils import load_json_dict, get_time_from_str, scale_po
 
 
 class BatchDatasetWAugmentation(data.Dataset):
-    def __init__(self, args, environment, bbox_gt=True, scale=512, train=True):
+    def __init__(self, args, environment, bbox_gt=True, scale=224, train=True):
         # in original paper, scale is 224
         self.root_dir = args.data
         self.object_list = args.object_list
@@ -207,7 +207,8 @@ class BatchDatasetWAugmentation(data.Dataset):
         all_bbox = torch.Tensor(all_bbox).long()
         all_translations = torch.stack(all_translations, dim=0).float()
         all_images = torch.stack(all_images, dim=0)
-        all_syn_images = torch.stack(all_syn_images, dim=0)
+        if self.use_syn:
+            all_syn_images = torch.stack(all_syn_images, dim=0)
         input = {
             'rgb': all_images,
             'syn_rgb': all_syn_images,
