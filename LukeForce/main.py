@@ -11,15 +11,17 @@ import numpy as np
 from solvers import train, test, save_gt_force
 
 from utils.arg_parser import parse_args
-from environments.subproc_physics_env import SubprocPhysicsEnv
-from datasets.batch_keypoint_and_trajectory_dataset import BatchDatasetWAugmentation
+from datasets.ns_dataset import NSDataset
 
 
 def get_dataset(args):
-    print("Create training dataset.")
-    train_dataset = args.dataset(args, environment=None, train=True)
-    print("Creating validation dataset.")
-    val_dataset = args.dataset(args, environment=train_dataset.environment, train=False)
+    print("Create training and validation dataset.")
+    if args.ns:
+        train_dataset = NSDataset(root_dir=args.ns_dataset_p, train_val_rate=0.9, train=True)
+        val_dataset = NSDataset(root_dir=args.ns_dataset_p, train_val_rate=0.9, train=False)
+    else:
+        train_dataset = args.dataset(args, environment=None, train=True)
+        val_dataset = args.dataset(args, environment=train_dataset.environment, train=False)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size,

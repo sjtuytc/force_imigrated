@@ -43,7 +43,7 @@ python data_generator/
 
 ## Sec3: training/testing
 
-1. Training command:
+1. Training command of LukeForce:
 
 ```shell
 # train the full model (original, no batch processing)
@@ -62,7 +62,14 @@ python main.py --title train_cp_prediction --batch-size 1 --workers 10 --gpu-ids
 python main.py --title save_gt_force --batch-size 1 --workers 10 --gpu-ids 1 --number_of_cp 5 --model NoModelGTForceBaseline --dataset BaselineForceDatasetWAugmentation --loss KeypointProjectionLoss --object_list ALL --break-batch 1 --data DatasetForce --predicted_cp_adr DatasetForce/gtforce_train.json savegtforce
 ```
 
-2. Testing command:
+2. Training command of NS:
+
+```shell
+# train the base model of NS.
+python main.py --title base_ns --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
+```
+
+3. Testing command:
 
 ```shell
 # test all based on predicted

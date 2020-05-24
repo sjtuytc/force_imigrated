@@ -130,11 +130,12 @@ def parse_args(log_info=True):
     parser.add_argument('--object_list', default=['072-a_toy_airplane'], nargs='+', type=str, help='options: ALL or ycb objects')
     parser.add_argument('--gpu-ids', type=int, default=-1, nargs='+', help='GPUs to use [-1 CPU only] (default: -1)')
 
-    # options for creating NS dataset
+    # options for creating NS dataset and training NS
+    parser.add_argument('--ns', action='store_true', help="training or testing neural simulator")
     parser.add_argument('--save_dataset', action='store_true')
     parser.add_argument('--dataset_size', default=100000, type=int)
     parser.add_argument('--save_freq', default=1000, type=int)
-    parser.add_argument('--dataset_p', default='NSDataset_v1', type=str, help='path to save created NS dataset.')
+    parser.add_argument('--ns_dataset_p', default='NSDataset_v1', type=str, help='path to save created NS dataset.')
 
     args = parser.parse_args()
 
@@ -154,7 +155,7 @@ def parse_args(log_info=True):
     local_start_time_str = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime(time.time()))
     log_title = args.title + '_' + local_start_time_str
     log_dir = os.path.join(logging_path, log_title)
-    args.qualitative_dir = os.path.join(args.logdir, log_title)
+    args.qualitative_dir = log_dir
 
     timestamp = str(datetime.datetime.now()).replace(' ', '#').replace(':', '.')
     args.timestamp = timestamp
