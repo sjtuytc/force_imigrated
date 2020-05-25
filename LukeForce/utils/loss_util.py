@@ -7,6 +7,7 @@ __all__ = [
     'KPProjectionCPPredictionLoss',
     'CPPredictionLoss',
     'ForceRegressionLoss',
+    'StateEstimationLoss'
 ]
 
 variables = locals()
@@ -33,6 +34,29 @@ class BasicLossFunction(nn.Module):
             self._local_loss_dict[k] = (loss_dict[k], batch_size)
             total += loss_dict[k] * self.weights_for_each_loss[k]
         return total
+
+
+class StateEstimationLoss(BasicLossFunction):
+    def __init__(self, args):
+        super(BasicLossFunction, self).__init__()
+        self.l1_loss = nn.SmoothL1Loss()
+        self._local_loss_dict = {
+            'state_prediction': None,
+        }
+        self.weights_for_each_loss = {
+            'state_prediction': 1.,
+        }
+
+    def forward(self, output_t, target_t):
+        output_state = output_t['state_tensor']
+        bs = output_state.shape[0]
+        target_state = target_t['state_tensor']
+        loss_state_estimation_value = self.l1_loss(output_state, target_state)
+        loss_dict = {
+            'state_prediction': loss_state_estimation_value,
+        }
+        total_loss = self.calc_and_update_total_loss(loss_dict, batch_size=bs)
+        return total_loss
 
 
 class CPPredictionLoss(BasicLossFunction):

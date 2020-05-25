@@ -66,7 +66,7 @@ python main.py --title save_gt_force --batch-size 1 --workers 10 --gpu-ids 1 --n
 
 ```shell
 # train the base model of NS.
-python main.py --title base_ns --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
+python main.py --title debug_base_ns --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 3 train
 ```
 
 3. Testing command:

@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-
 from utils.environment_util import EnvState
 from utils.projection_utils import get_keypoint_projection, get_all_objects_keypoint_tensors
 from .base_model import BaseModel
@@ -9,96 +8,57 @@ from .base_model import BaseModel
 from solvers import metrics
 
 
+class MlpLayer(nn.Module):
+    def __init__(self, input_d, hidden_d, output_d):
+        super(MlpLayer, self).__init__()
+        self.fc1 = nn.Linear(input_d, hidden_d)
+        self.fc2 = nn.Linear(hidden_d, hidden_d)
+        self.relu = nn.ReLU()
+        self.fc3 = nn.Linear(hidden_d, output_d)
+
+    def forward(self, x):
+        x = self.relu(self.fc1(x))
+        x = self.relu(self.fc2(x))
+        x = self.relu(self.fc3(x))
+        return x
+
+
 class NSBaseModel(BaseModel):
     metric = []
 
     def __init__(self, args, ):
         super(NSBaseModel, self).__init__(args)
         self.loss_function = args.loss
-        self.relu = nn.LeakyReLU()
+        self.hidden_size = 512
+        self.force_feature_size, self.state_feature_size, self.cp_feature_size = 64, 64, 64
+        self.state_tensor_dim, self.force_tensor_dim, self.cp_tensor_dim = 14, 15, 15
+        self.state_encoder = MlpLayer(input_d=self.state_tensor_dim, hidden_d=self.hidden_size, output_d=self.state_feature_size)
+        self.force_encoder = MlpLayer(input_d=self.force_tensor_dim, hidden_d=self.hidden_size, output_d=self.force_feature_size)
+        self.cp_encoder = MlpLayer(input_d=self.cp_tensor_dim, hidden_d=self.hidden_size, output_d=self.cp_feature_size)
+        self.force_decoder = MlpLayer(input_d=self.state_feature_size + self.force_feature_size + self.cp_feature_size,
+                                      hidden_d=self.hidden_size, output_d=self.state_tensor_dim)
         self.number_of_cp = args.number_of_cp
         self.sequence_length = args.sequence_length
         self.gpu_ids = args.gpu_ids
-
-        self.feature_extractor.eval()
-
-        self.image_feature_size = 512
-        self.object_feature_size = 512
-        self.hidden_size = 512
-        self.num_layers = 3
-        self.input_feature_size = self.object_feature_size
-        self.cp_feature_size = self.number_of_cp * 3
 
     def loss(self, args):
         return self.loss_function(args)
 
     def forward(self, input_d, target_d):
-        force = input_d['force']
-        contact_points = input_d['contact_points']
-        initial_state = input_d['initial_state']
-        initial_rotation = input_d['initial_rotation']
-        return
-        # rgb = input_d['rgb']
-        # batch_size, seq_len, c, w, h = rgb.shape
-        # contact_point_as_input = input['contact_points'].view(batch_size, 5 * 3)
-        #
-        # image_features = self.resnet_features(rgb)
-        # image_features = self.image_embed(image_features.view(batch_size * seq_len, 512, 7, 7)).view(batch_size, seq_len, 64 * 7 * 7)
-        #
-        # initial_object_features = self.input_object_embed(torch.cat([initial_position, initial_rotation], dim=-1))
-        # object_features = initial_object_features.unsqueeze(1).repeat(1, self.sequence_length, 1)  # add a dimension for sequence length and then repeat that
-        #
-        # input_embedded = torch.cat([image_features, object_features], dim=-1)
-        # embedded_sequence, (hidden, cell) = self.lstm_encoder(input_embedded)
-        #
-        # contact_point_embedding = self.contact_point_embed(contact_point_as_input).unsqueeze(1).repeat(1, seq_len, 1)
-        # combined_w_cp = torch.cat([embedded_sequence, contact_point_embedding], dim=-1)
-        # forces_prediction = self.force_decoder(combined_w_cp).view(batch_size, seq_len, self.number_of_cp, 3)  # Predict contact point for each image
-        # forces_prediction = forces_prediction[:, 1:, :, :]
-        #
-        # forces_prediction = forces_prediction.clamp(-1.5, 1.5)
-        #
-        # output = {
-        #     'forces': forces_prediction,  # batchsize x seq len x number of cp x 3
-        # }
-        # target['object_name'] = input['object_name']
-        #
-        # if not self.train_mode:
-        #     object_name = input['object_name']
-        #     assert len(object_name) == 1
-        #     object_name = object_name[0]
-        #
-        #     contact_points = input['contact_points']
-        #     assert contact_points.shape[0] == 1
-        #     contact_points = contact_points.squeeze(0)
-        #     resulting_position = []
-        #     resulting_rotation = []
-        #
-        #     env_state = EnvState(object_name=object_name, rotation=initial_rotation[0], position=initial_position[0], velocity=None, omega=None)
-        #     for seq_ind in range(self.sequence_length - 1):
-        #         force = forces_prediction[0, seq_ind].view(self.number_of_cp * 3)
-        #         # initial initial_velocity is whatever it was the last frame, note that the gradients are not backproped here
-        #         env_state, force_success, force_applied = self.environment_layer.apply(self.environment, env_state.toTensor(), force, contact_points)
-        #         env_state = EnvState.fromTensor(env_state)
-        #
-        #         resulting_position.append(env_state.position)
-        #         resulting_rotation.append(env_state.rotation)
-        #     resulting_position = torch.stack(resulting_position, dim=0)
-        #     resulting_rotation = torch.stack(resulting_rotation, dim=0)
-        #     resulting_position = resulting_position.unsqueeze(0)  # adding batchsize back because we need it in the loss
-        #     resulting_rotation = resulting_rotation.unsqueeze(0)  # adding batchsize back because we need it in the loss
-        #
-        #     all_keypoints = get_keypoint_projection(object_name, resulting_position, resulting_rotation,
-        #                                             self.all_objects_keypoint_tensor[object_name])
-        #     all_keypoints = all_keypoints.unsqueeze(0)  # adding batchsize back because we need it in the loss
-        #     output['keypoints'] = all_keypoints
-        #     output['rotation'] = resulting_rotation
-        #     output['position'] = resulting_position
-        #
-        #     output['force_applied'] = output['forces']
-        #     output['force_direction'] = output['forces']
-        #
-        # return output, target
+        forces, contact_points, state_tensor = input_d['force'], input_d['contact_points'], input_d['state_tensor']
+        batch_size = forces.shape[0]
+        forces, contact_points, state_tensor = forces.reshape(batch_size, -1), contact_points.reshape(batch_size, -1)\
+            , state_tensor.reshape(batch_size, -1)
+        force_feature = self.force_encoder(forces)
+        state_feature = self.state_encoder(state_tensor)
+        cp_feature = self.cp_encoder(contact_points)
+        fused_feature = torch.cat([force_feature, state_feature, cp_feature], dim=-1)
+        predict_state = self.force_decoder(fused_feature)
+        target_d['state_tensor'] = target_d['state_tensor'].reshape(batch_size, -1)
+        output_d = {
+            'state_tensor': predict_state
+        }
+        return output_d, target_d
 
     def optimizer(self):
         return torch.optim.Adam(self.parameters(), lr=self.base_lr)

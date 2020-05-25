@@ -30,20 +30,23 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
     # Iterate over data
     timestamp = time.time()
     print("Begin train one epoch!")
-    for i, (input, target) in enumerate(tqdm.tqdm(data_loader)):
-        # Move data to gpu
-        batch_size = input['rgb'].size(0)
+    # for i, (input_dict, target_dict) in enumerate(tqdm.tqdm(data_loader)):
+    for i, (input_dict, target_dict) in enumerate(data_loader):
+        if 'rgb' in input_dict.keys():
+            batch_size = input_dict['rgb'].size(0)
+        else:
+            batch_size = input_dict['force'].size(0)
         if args.gpu_ids != -1:  # if use gpu
-            for feature in input:
-                value = input[feature]
+            for feature in input_dict:
+                value = input_dict[feature]
                 if issubclass(type(value), torch.Tensor):
-                    input[feature] = value.cuda(non_blocking=True)
-                target = {feature: target[feature].cuda(non_blocking=True) for feature in target.keys()}
+                    input_dict[feature] = value.cuda(non_blocking=True)
+                target_dict = {feature: target_dict[feature].cuda(non_blocking=True) for feature in target_dict.keys()}
             data_time_meter.update((time.time() - timestamp) / batch_size, batch_size)
 
             before_forward_pass_time = time.time()
             # Forward pass
-            output, target_output = model(input, target)
+            output, target_output = model(input_dict, target_dict)
             forward_pass_time_meter.update((time.time() - before_forward_pass_time) / batch_size, batch_size)
             before_loss_time = time.time()
             loss_output = loss(output, target_output)
@@ -72,10 +75,10 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
             real_index = (epoch - 1) * dataset_length + (i * args.batch_size)
 
             loss_values = loss.local_loss_dict
+
             for loss_name in loss_detail_meter:
                 (loss_val, data_size) = loss_values[loss_name]
                 loss_detail_meter[loss_name].update(loss_val.item(), data_size)
-
             if i % args.tensorboard_log_freq == 0:
                 result_log_dict = {
                     'Time/Batch': batch_time_meter.avg,
