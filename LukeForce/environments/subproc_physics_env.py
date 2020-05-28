@@ -1,21 +1,9 @@
-from environments.base_env import BaseBulletEnv
-from environments.physics_env import PhysicsEnv
 from environments.env_wrapper_multiple_object import MultipleObjectWrapper
-import pybullet_data
-from utils.transformations import quaternion_normal2bullet, quaternion_bullet2normal
-
-import os
-import time
-import gym
 import numpy as np
 import torch
 import multiprocessing as mp
-from utils.obj_util import obtain_all_vertices_from_obj
-from utils.quaternion_util import quaternion_to_rotation_matrix
-from utils.constants import OBJECT_TO_SCALE, CONTACT_POINT_MASK_VALUE, GRAVITY_VALUE
 from utils.multi_process import CloudpickleWrapper, clear_mpi_env_vars
 
-from environments.base_env import BaseBulletEnv
 from data_generator.ns_force_dataset_manager import NSDatasetManager
 
 
@@ -46,15 +34,17 @@ def worker(remote, parent_remote, env_fn_wrappers):
         forces, initial_state, object_num, list_of_contact_points = \
             data['forces'], data['initial_state'], data['object_num'], data['list_of_contact_points']
         # use this to call init_location_and_apply_force
-        current_state, list_of_force_success, list_of_force_location = \
+        current_state, list_of_force_success, list_of_force_location, list_of_force_values = \
             env.init_location_and_apply_force(forces=forces, initial_state=initial_state,
                                               object_num=object_num,
                                               list_of_contact_points=list_of_contact_points)
         # transfer the results to picklable objects.
         current_state = current_state.to_dict()
         list_of_force_location = [ele.tolist() for ele in list_of_force_location]
+        list_of_force_values = [ele.tolist() for ele in list_of_force_values]
 
-        res_one_d = {'state': current_state, 'succ': list_of_force_success, 'loc': list_of_force_location}
+        res_one_d = {'state': current_state, 'succ': list_of_force_success,
+                     'force_values': list_of_force_values, 'loc': list_of_force_location}
         return res_one_d
 
     parent_remote.close()

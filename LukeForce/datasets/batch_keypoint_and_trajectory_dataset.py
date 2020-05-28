@@ -8,6 +8,18 @@ from environments.subproc_physics_env import SubprocPhysicsEnv
 from utils.data_loading_utils import load_json_dict, get_time_from_str, scale_position, process_projection
 
 
+def calculate_data_stats(final_data):
+    obj_name2images = {}
+    for idx, one_d in enumerate(final_data):
+        obj_name, sequence = one_d['obj_name'], one_d['sequence']
+        if obj_name not in obj_name2images.keys():
+            obj_name2images[obj_name] = []
+        for one_time in sequence:
+            if one_time not in obj_name2images[obj_name]:
+                obj_name2images[obj_name].append(one_time)
+    return obj_name2images
+
+
 class BatchDatasetWAugmentation(data.Dataset):
     def __init__(self, args, environment, bbox_gt=True, scale=224, train=True):
         # in original paper, scale is 224
@@ -59,13 +71,6 @@ class BatchDatasetWAugmentation(data.Dataset):
 
         self.fps = args.fps
         self.subsample_rate = args.subsample_rate
-        if environment is None:
-            print('initialize multiprocessing environments')
-            environment = SubprocPhysicsEnv(args=args, object_paths=self.object_paths, context='spawn', nproc=11, nenvs=44)
-            environment.reset()
-            print('done initializing multiprocessing environments')
-        args.instance_environment = environment
-        self.environment = environment
         self.render = args.render
         self.scale = scale
         if train:
@@ -89,7 +94,16 @@ class BatchDatasetWAugmentation(data.Dataset):
 
         print('Get object sequences.')
         self.all_possible_data = self.get_possible_object_sequences()
+        self.final_obj2image = calculate_data_stats(self.all_possible_data)
         self.all_possible_data += self.get_possible_reverse_sequences()
+
+        if environment is None:
+            print('initialize multiprocessing environments')
+            environment = SubprocPhysicsEnv(args=args, object_paths=self.object_paths, context='spawn', nproc=11, nenvs=44)
+            environment.reset()
+            print('done initializing multiprocessing environments')
+        args.instance_environment = environment
+        self.environment = environment
 
     # Just a data augmentation
     def get_possible_reverse_sequences(self):

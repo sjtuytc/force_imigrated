@@ -133,10 +133,10 @@ def parse_args(log_info=True):
     # options for creating NS dataset and training NS
     parser.add_argument('--ns', action='store_true', help="training or testing neural simulator")
     parser.add_argument('--save_dataset', action='store_true')
-    parser.add_argument('--dataset_size', default=100000, type=int)
+    parser.add_argument('--dataset_size', default=1000000, type=int)
     parser.add_argument('--save_freq', default=1000, type=int)
     parser.add_argument('--ns_dataset_p', default='NSDataset_v1', type=str, help='path to save created NS dataset.')
-
+    parser.add_argument('--obj_name', default='019_pitcher_base', type=str, help='select one object to test our method.')
     args = parser.parse_args()
 
     args.logdir = args.data
@@ -152,7 +152,7 @@ def parse_args(log_info=True):
         torch.cuda.manual_seed(args.seed)
 
     logging_path = os.path.join(args.logdir, 'runs/')
-    local_start_time_str = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime(time.time()))
+    local_start_time_str = time.strftime("%Y-%m-%d_%H_%M_%S", time.localtime(time.time()))
     log_title = args.title + '_' + local_start_time_str
     log_dir = os.path.join(logging_path, log_title)
     args.qualitative_dir = log_dir

@@ -237,3 +237,43 @@ class CPMetric(BaseMetric):
 
     def report(self):
         return 'CPMetric:{}'.format((self.meter['average_cp'].avg)).replace('\n', '; ')
+
+
+class StateMetric(BaseMetric):
+    def __init__(self, args):
+        super(StateMetric, self).__init__()
+        self.object_list = args.object_list
+        self.sequence_length = args.sequence_length
+        self.meter = {'avg_position': AverageMeter(), 'avg_rotation': AverageMeter(), 'avg_omega': AverageMeter(),
+                      'avg_speed': AverageMeter()}
+
+        # assert args.mode == 'test' or args.mode == 'testtrain'
+        self.istraining = args.mode == 'train'
+
+    def average(self):
+        return {k: self.meter[k].avg for k in self.meter}
+
+    def val(self):
+        return {k: self.meter[k].val for k in self.meter}
+
+    def record_output(self, output, target):
+        output_state_tensor = output['state_tensor']
+        target_state_tensor = target['state_tensor']
+        batch_size = output_state_tensor.shape[0]
+
+        pos_loss = torch.abs(output_state_tensor[:, :3] - target_state_tensor[:, :3]).norm(dim=-1).mean()
+        rot_loss = torch.abs(output_state_tensor[:, 3:7] - target_state_tensor[:, 3:7]).norm(dim=-1).mean()
+        vel_loss = torch.abs(output_state_tensor[:, 7:10] - target_state_tensor[:, 7:10]).norm(dim=-1).mean()
+        omg_loss = torch.abs(output_state_tensor[:, 10:] - target_state_tensor[:, 10:]).norm(dim=-1).mean()
+
+        self.meter['avg_position'].update(pos_loss, batch_size)
+        self.meter['avg_rotation'].update(rot_loss, batch_size)
+        self.meter['avg_omega'].update(omg_loss, batch_size)
+        self.meter['avg_speed'].update(vel_loss, batch_size)
+
+    def report(self):
+        report_str = 'Position Dis: {:.3f}; '.format(self.meter['avg_position'].avg)
+        report_str += 'Rotation Dis: {:.3f}; '.format(self.meter['avg_rotation'].avg)
+        report_str += 'Omega Dis: {:.3f}; '.format(self.meter['avg_omega'].avg)
+        report_str += 'Vel Dis: {:.3f}.'.format(self.meter['avg_speed'].avg)
+        return report_str

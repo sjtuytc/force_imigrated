@@ -1,11 +1,8 @@
 import torch
 import torch.nn as nn
-from utils.environment_util import EnvState
-from utils.projection_utils import get_keypoint_projection, get_all_objects_keypoint_tensors
 from .base_model import BaseModel
-# from utils.net_util import input_embedding_net, EnvWHumanCpFiniteDiffFast, combine_block_w_do
-# from torchvision.models.resnet import resnet18
 from solvers import metrics
+import torch.nn.functional as F
 
 
 class MlpLayer(nn.Module):
@@ -13,25 +10,32 @@ class MlpLayer(nn.Module):
         super(MlpLayer, self).__init__()
         self.fc1 = nn.Linear(input_d, hidden_d)
         self.fc2 = nn.Linear(hidden_d, hidden_d)
-        self.relu = nn.ReLU()
-        self.fc3 = nn.Linear(hidden_d, output_d)
+        self.fc3 = nn.Linear(hidden_d, hidden_d)
+        self.bn1 = nn.BatchNorm1d(num_features=hidden_d)
+        self.bn2 = nn.BatchNorm1d(num_features=hidden_d)
+        self.bn3 = nn.BatchNorm1d(num_features=hidden_d)
+        self.output_fc = nn.Linear(hidden_d, output_d)
 
     def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.relu(self.fc2(x))
-        x = self.relu(self.fc3(x))
+        x = F.relu(self.fc1(x))
+        x = self.bn1(x)
+        x = F.relu(self.fc2(x))
+        x = self.bn2(x)
+        x = F.relu(self.fc3(x))
+        x = self.bn3(x)
+        x = self.output_fc(x)
         return x
 
 
 class NSBaseModel(BaseModel):
-    metric = []
+    metric = [metrics.StateMetric]
 
     def __init__(self, args, ):
         super(NSBaseModel, self).__init__(args)
         self.loss_function = args.loss
         self.hidden_size = 512
         self.force_feature_size, self.state_feature_size, self.cp_feature_size = 64, 64, 64
-        self.state_tensor_dim, self.force_tensor_dim, self.cp_tensor_dim = 14, 15, 15
+        self.state_tensor_dim, self.force_tensor_dim, self.cp_tensor_dim = 13, 15, 15
         self.state_encoder = MlpLayer(input_d=self.state_tensor_dim, hidden_d=self.hidden_size, output_d=self.state_feature_size)
         self.force_encoder = MlpLayer(input_d=self.force_tensor_dim, hidden_d=self.hidden_size, output_d=self.force_feature_size)
         self.cp_encoder = MlpLayer(input_d=self.cp_tensor_dim, hidden_d=self.hidden_size, output_d=self.cp_feature_size)

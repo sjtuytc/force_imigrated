@@ -39,7 +39,7 @@ class BasicLossFunction(nn.Module):
 class StateEstimationLoss(BasicLossFunction):
     def __init__(self, args):
         super(BasicLossFunction, self).__init__()
-        self.l1_loss = nn.SmoothL1Loss()
+        self.l1_loss = nn.MSELoss()
         self._local_loss_dict = {
             'state_prediction': None,
         }

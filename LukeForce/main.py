@@ -17,8 +17,9 @@ from datasets.ns_dataset import NSDataset
 def get_dataset(args):
     print("Create training and validation dataset.")
     if args.ns:
-        train_dataset = NSDataset(root_dir=args.ns_dataset_p, train_val_rate=0.9, train=True)
-        val_dataset = NSDataset(root_dir=args.ns_dataset_p, train_val_rate=0.9, train=False)
+        train_dataset = NSDataset(obj_name=args.obj_name, root_dir=args.ns_dataset_p, train_val_rate=0.9, train=True)
+        val_dataset = NSDataset(obj_name=args.obj_name, root_dir=args.ns_dataset_p, train_val_rate=0.9, train=False,
+                                data_statistics=train_dataset.data_statistics)
     else:
         train_dataset = args.dataset(args, environment=None, train=True)
         val_dataset = args.dataset(args, environment=train_dataset.environment, train=False)
@@ -78,8 +79,6 @@ def get_model_and_loss(args):
     loss = model.loss(args)
     if args.gpu_ids != -1:
         loss = loss.cuda()
-    # logging.info('Model: {}'.format(model))
-    # logging.info('Loss: {}'.format(loss))
     return model, loss, restarting_epoch
 
 

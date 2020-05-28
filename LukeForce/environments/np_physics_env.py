@@ -40,11 +40,6 @@ class NpPhysicsEnv(BaseBulletEnv):
         self.terminated = 0
 
         self.vis_w, self.vis_h = 1920, 1080
-        # self.view_matrix, self.projection_matrix = \
-        #     (1.0, 0.0, -0.0, 0.0, 0.0, -1.0, -0.0, 0.0, -0.0, 0.0, -1.0, 0.0, -0.0, -0.0, 0.0, 1.0), \
-        #     (0.7499999403953552, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0000200271606445, -1.0, 0.0, 0.0,
-        #      -0.02000020071864128, 0.0)
-        # self.env_intrisinc_matrix = np.matmul(np.array(self.projection_matrix).reshape(4, 4), np.array(self.view_matrix).reshape(4, 4))
 
     def reset(self):
         self.terminated = 0
@@ -273,7 +268,7 @@ class NpPhysicsEnv(BaseBulletEnv):
 
         assert len(forces) == self.number_of_cp
 
-        return current_state, list_of_force_success, list_of_force_location
+        return current_state, list_of_force_success, list_of_force_location, list_of_applied_forces
 
     def apply_force_to_obj(self, force_to_apply, contact_point, surface_normal, object_num=None):
         if object_num is None:

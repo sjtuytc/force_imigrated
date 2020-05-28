@@ -7,6 +7,7 @@ import matplotlib as mpl
 import random
 random.seed(0)
 from solvers.metrics import AverageMeter
+import shutil
 
 mpl.use('Agg')
 
@@ -161,8 +162,9 @@ def train_one_data(model, loss, optimizer, test_dataset, args):
 
 def get_dataset(args):
     print("Create training dataset.")
-    debug_dataset = args.dataset(args, environment=None, train=True, bbox_gt=True, scale=512)
-    return debug_dataset
+    train_dataset = args.dataset(args, environment=None, train=True, bbox_gt=True, scale=512)
+    test_dataset = args.dataset(args, environment=None, train=False, bbox_gt=True, scale=512)
+    return train_dataset, test_dataset
 
 
 def get_model_and_loss(args):
@@ -186,6 +188,18 @@ def get_model_and_loss(args):
     return model, loss, restarting_epoch
 
 
+def save_image_to_dir(obj2image_dict, time2image_path, target_folder, obj_name="019_pitcher_base"):
+    time_seq_cur_obj = obj2image_dict[obj_name]
+    time2image_cur_obj = time2image_path[obj_name]
+    for one_time in time_seq_cur_obj:
+        one_image_p = time2image_cur_obj[one_time]['image_adr']
+        one_image_p = one_image_p.replace('LMJTFY/', '')
+        one_image_p = os.path.join('DatasetForce', one_image_p)
+        shutil.copyfile(one_image_p, os.path.join(target_folder, one_time + ".jpg"))
+        print("copy from ", one_image_p, "to", target_folder)
+    return
+
+
 def main():
     args = parse_args()
 
@@ -193,14 +207,20 @@ def main():
     torch.manual_seed(args.seed)
 
     logging.info('Reading dataset metadata.')
-    debug_dataset = get_dataset(args)
-
+    train_dataset, test_dataset = get_dataset(args)
+    train_obj2image, test_obj2image = train_dataset.final_obj2image, test_dataset.final_obj2image
+    train_demo, test_demo = 'demo_data/train', 'demo_data/test'
+    os.makedirs(train_demo, exist_ok=True)
+    os.makedirs(test_demo, exist_ok=True)
+    save_image_to_dir(train_obj2image, train_dataset.time_to_clip_ind_image_adr, train_demo)
+    save_image_to_dir(test_obj2image, test_dataset.time_to_clip_ind_image_adr, test_demo)
+    raise RuntimeError("finish making demo")
     logging.info('Constructing model.')
     model, loss, restarting_epoch = get_model_and_loss(args)
     print("Debug model construction finished!")
 
     optimizer = model.optimizer()
-    train_one_data(model=model, loss=loss, optimizer=optimizer, test_dataset=debug_dataset, args=args)
+    train_one_data(model=model, loss=loss, optimizer=optimizer, test_dataset=train_dataset, args=args)
 
 
 if __name__ == "__main__":

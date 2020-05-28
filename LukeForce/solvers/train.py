@@ -30,8 +30,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
     # Iterate over data
     timestamp = time.time()
     print("Begin train one epoch!")
-    # for i, (input_dict, target_dict) in enumerate(tqdm.tqdm(data_loader)):
-    for i, (input_dict, target_dict) in enumerate(data_loader):
+    for i, (input_dict, target_dict) in enumerate(tqdm.tqdm(data_loader)):
         if 'rgb' in input_dict.keys():
             batch_size = input_dict['rgb'].size(0)
         else:
@@ -124,7 +123,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
                                         accuracy_report='\n'.join([ac.final_report() for ac in accuracy_metric])))
         else:
             training_summary = ""
-        if i % 20 == 0 or i == len(data_loader) - 1:
+        if i % 50 == 0 or i == len(data_loader) - 1:
             logging.info(training_summary)
             logging.info('Full train result is at {}'.format(
                 os.path.join(args.save, 'train.log')))
