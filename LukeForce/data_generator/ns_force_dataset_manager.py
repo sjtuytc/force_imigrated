@@ -29,9 +29,10 @@ class NSDatasetManager:
             self.all_data[obj_name].append({'input': input_d, 'output': output_d})
         else:
             self.all_data[obj_name] = []
-        full_path = save_into_json(save_obj=self.all_data[obj_name], folder=self.ns_dataset_p, file_name=obj_name,
-                                   verbose=False)
         self.data_counter += 1
         if self.data_counter % self.save_freq == 0 or self.args.debug:
-            print("Data num:", self.data_counter, 'save path:', full_path)
+            for obj_name in self.all_data.keys():
+                full_path = save_into_json(save_obj=self.all_data[obj_name], folder=self.ns_dataset_p, file_name=obj_name,
+                                           verbose=False)
+                print("Data num:", len(self.all_data[obj_name]), 'save path:', full_path)
         return

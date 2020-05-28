@@ -6,23 +6,20 @@ import torch.nn.functional as F
 
 
 class MlpLayer(nn.Module):
-    def __init__(self, input_d, hidden_d, output_d):
+    def __init__(self, input_d, output_d):
         super(MlpLayer, self).__init__()
-        self.fc1 = nn.Linear(input_d, hidden_d)
-        self.fc2 = nn.Linear(hidden_d, hidden_d)
-        self.fc3 = nn.Linear(hidden_d, hidden_d)
-        self.bn1 = nn.BatchNorm1d(num_features=hidden_d)
-        self.bn2 = nn.BatchNorm1d(num_features=hidden_d)
-        self.bn3 = nn.BatchNorm1d(num_features=hidden_d)
-        self.output_fc = nn.Linear(hidden_d, output_d)
+        self.fc1 = nn.Linear(input_d, 64)
+        self.fc2 = nn.Linear(64, 256)
+        self.fc3 = nn.Linear(256, 512)
+        self.bn1 = nn.BatchNorm1d(num_features=64)
+        self.bn2 = nn.BatchNorm1d(num_features=256)
+        self.bn3 = nn.BatchNorm1d(num_features=512)
+        self.output_fc = nn.Linear(512, output_d)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = self.bn1(x)
-        x = F.relu(self.fc2(x))
-        x = self.bn2(x)
-        x = F.relu(self.fc3(x))
-        x = self.bn3(x)
+        x = F.relu(self.bn1(self.fc1(x)))
+        x = F.relu(self.bn2(self.fc2(x)))
+        x = F.relu(self.bn3(self.fc3(x)))
         x = self.output_fc(x)
         return x
 
@@ -33,14 +30,13 @@ class NSBaseModel(BaseModel):
     def __init__(self, args, ):
         super(NSBaseModel, self).__init__(args)
         self.loss_function = args.loss
-        self.hidden_size = 512
         self.force_feature_size, self.state_feature_size, self.cp_feature_size = 64, 64, 64
         self.state_tensor_dim, self.force_tensor_dim, self.cp_tensor_dim = 13, 15, 15
-        self.state_encoder = MlpLayer(input_d=self.state_tensor_dim, hidden_d=self.hidden_size, output_d=self.state_feature_size)
-        self.force_encoder = MlpLayer(input_d=self.force_tensor_dim, hidden_d=self.hidden_size, output_d=self.force_feature_size)
-        self.cp_encoder = MlpLayer(input_d=self.cp_tensor_dim, hidden_d=self.hidden_size, output_d=self.cp_feature_size)
+        self.state_encoder = MlpLayer(input_d=self.state_tensor_dim, output_d=self.state_feature_size)
+        self.force_encoder = MlpLayer(input_d=self.force_tensor_dim, output_d=self.force_feature_size)
+        self.cp_encoder = MlpLayer(input_d=self.cp_tensor_dim, output_d=self.cp_feature_size)
         self.force_decoder = MlpLayer(input_d=self.state_feature_size + self.force_feature_size + self.cp_feature_size,
-                                      hidden_d=self.hidden_size, output_d=self.state_tensor_dim)
+                                      output_d=self.state_tensor_dim)
         self.number_of_cp = args.number_of_cp
         self.sequence_length = args.sequence_length
         self.gpu_ids = args.gpu_ids

@@ -64,7 +64,7 @@ python main.py --title save_gt_force --batch-size 1 --workers 10 --gpu-ids 1 --n
 
 ```shell
 # train the base model of NS.
-python main.py --title train_ns_v3 --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000  --save_frequency 30 --ns_dataset_p NSDataset_v2 --obj_name 019_pitcher_base train
+python main.py --title train_ns_v4 --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000  --save_frequency 30 --ns_dataset_p NSDataset_v3 --base-lr 0.0001 --obj_name toy_airplane train
 ```
 
 3. Testing command:

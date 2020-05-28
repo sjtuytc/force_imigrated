@@ -50,7 +50,7 @@ class NSDataset(data.Dataset):
         for idx, ele in enumerate(self.data):
             ci, co = ele['input'], ele['output']
             forces, cps, position, rotation, velocity, omega = \
-                ci['forces'], ci['list_of_contact_points'], ci['initial_state']['position'], \
+                co['force_values'], co['loc'], ci['initial_state']['position'], \
                 ci['initial_state']['rotation'], ci['initial_state']['velocity'], ci['initial_state']['omega']
             all_forces.append(forces)
             all_cps.append(cps)
@@ -75,15 +75,17 @@ class NSDataset(data.Dataset):
         input_d, output_d = cur_d['input'], cur_d['output']
         isd, tsd = input_d['initial_state'], output_d['state']
         sta = self.data_statistics
-        pm, pstd, vm, vst, fm, fst, omm, omstd, cpm, cpstd, = sta['position_mean'], sta['position_std'], sta['velocity_mean'], sta['velocity_std'], \
-                                                 sta['force_mean'], sta['force_std'], sta['omega_mean'], sta['omega_std'], sta['cp_mean'], sta['cp_std']
+        pm, pstd, vm, vst, fm, fst, omm, omstd, cpm, cpstd = sta['position_mean'], sta['position_std'], \
+                                                              sta['velocity_mean'], sta['velocity_std'], \
+                                                              sta['force_mean'], sta['force_std'], sta['omega_mean'],\
+                                                              sta['omega_std'], sta['cp_mean'], sta['cp_std']
         initial_env_state = NormEnvState(norm_or_denorm=True, position=isd['position'], rotation=isd['rotation'],
                                          position_mean=pm, position_std=pstd, velocity=isd['velocity'], velocity_mean=vm,
                                          velocity_std=vst, omega=isd['omega'], omega_mean=omm, omega_std=omstd)
         target_env_state = NormEnvState(norm_or_denorm=True, position=tsd['position'], rotation=tsd['rotation'],
                                         position_mean=pm, position_std=pstd, velocity=tsd['velocity'], velocity_mean=vm,
                                         velocity_std=vst, omega=tsd['omega'], omega_mean=omm, omega_std=omstd)
-        force_tensor, cp_tensor = torch.Tensor(input_d['forces']), torch.Tensor(input_d['list_of_contact_points'])
+        force_tensor, cp_tensor = torch.Tensor(output_d['force_values']), torch.Tensor(output_d['loc'])
         norm_force, norm_cp = norm_tensor(norm_or_denorm=True, tensor=force_tensor, mean_tensor=fm, std_tensor=fst), \
                               norm_tensor(norm_or_denorm=True, tensor=cp_tensor, mean_tensor=cpm, std_tensor=cpstd)
         input_dict = {
@@ -95,8 +97,6 @@ class NSDataset(data.Dataset):
 
         labels = {
             'state_tensor': target_env_state.toTensor().detach(),
-            'succ': torch.Tensor(output_d['succ']),
-            'loc': torch.Tensor(output_d['loc']),
         }
 
         return input_dict, labels
