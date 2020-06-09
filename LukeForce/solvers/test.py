@@ -5,6 +5,16 @@ import torch
 import pdb
 from . import metrics
 import tqdm
+import numpy as np
+from utils.visualization_util import vis_state
+
+
+def dict_of_tensor_to_cuda(tensor_dict):
+    for feature in tensor_dict:
+        value = tensor_dict[feature]
+        if issubclass(type(value), torch.Tensor):
+            tensor_dict[feature] = value.float().cuda(non_blocking=True)
+    return tensor_dict
 
 
 def test_one_epoch(model, loss, data_loader, epoch, args):
@@ -32,23 +42,31 @@ def test_one_epoch(model, loss, data_loader, epoch, args):
             if 'rgb' in input_dict.keys():
                 batch_size = input_dict['rgb'].size(0)
             else:
-                batch_size = input_dict['force'].size(0)
+                batch_size = input_dict['norm_force'].size(0)
 
             if args.gpu_ids != -1:
-                for feature in input_dict:
-                    value = input_dict[feature]
-                    if issubclass(type(value), torch.Tensor):
-                        input_dict[feature] = value.cuda(non_blocking=True)
-                target_dict = {feature: target_dict[feature].cuda(non_blocking=True) for feature in target_dict.keys()}
+                input_dict = dict_of_tensor_to_cuda(input_dict)
+                target_dict = dict_of_tensor_to_cuda(target_dict)
+                target_dict['statistics'] = dict_of_tensor_to_cuda(target_dict['statistics'])
             data_time_meter.update((time.time() - timestamp) / batch_size, batch_size)
 
             before_forward_pass_time = time.time()
             # Forward pass
-            output, target_output = model(input_dict, target_dict)
+            model_output, target_output = model(input_dict, target_dict)
             forward_pass_time_meter.update((time.time() - before_forward_pass_time) / batch_size, batch_size)
 
             before_loss_time = time.time()
-            loss_output = loss(output, target_output)
+            loss_output = loss(model_output, target_output)
+
+            if args.vis and i < 20:
+                m_s, t_s = model_output['denorm_state_tensor'][0], target_output['denorm_state_tensor'][0]
+                msp, msr = np.array(m_s[:3].cpu()), np.array(m_s[3:7].cpu())
+                tsp, tsr = np.array(t_s[:3].cpu()), np.array(t_s[3:7].cpu())
+                vis_state(vis_env=args.vis_env, obj_name=args.obj_name, position=msp, rotation=msr,
+                          image_name='model_' + str(i), save_folder=args.vis_f, verbose=True)
+                vis_state(vis_env=args.vis_env, obj_name=args.obj_name, position=tsp, rotation=tsr,
+                          image_name='target_' + str(i), save_folder=args.vis_f, verbose=True)
+
             loss_time_meter.update((time.time() - before_loss_time) / batch_size, batch_size)
             if args.render:
                 print('loss', loss.local_loss_dict)
@@ -56,14 +74,14 @@ def test_one_epoch(model, loss, data_loader, epoch, args):
             before_backward_time = time.time()
             backward_time_meter.update((time.time() - before_backward_time) / batch_size, batch_size)
 
-            output = {f: output[f].detach() for f in output.keys()}
+            model_output = {f: model_output[f].detach() for f in model_output.keys()}
 
             # Bookkeeping on loss, accuracy, and batch time
             loss_meter.update(loss_output.detach(), batch_size)
             before_metrics_time = time.time()
             with torch.no_grad():
                 for acc in accuracy_metric:
-                    acc.record_output(output, target_output)
+                    acc.record_output(model_output, target_output)
             metrics_time_meter.update((time.time() - before_metrics_time) / batch_size, batch_size)
             batch_time_meter.update((time.time() - timestamp), batch_size)
 

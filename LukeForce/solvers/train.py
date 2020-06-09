@@ -40,7 +40,10 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
                 value = input_dict[feature]
                 if issubclass(type(value), torch.Tensor):
                     input_dict[feature] = value.cuda(non_blocking=True)
-                target_dict = {feature: target_dict[feature].cuda(non_blocking=True) for feature in target_dict.keys()}
+            for feature in target_dict:
+                value = target_dict[feature]
+                if issubclass(type(value), torch.Tensor):
+                    target_dict[feature] = value.cuda(non_blocking=True)
             data_time_meter.update((time.time() - timestamp) / batch_size, batch_size)
 
             before_forward_pass_time = time.time()

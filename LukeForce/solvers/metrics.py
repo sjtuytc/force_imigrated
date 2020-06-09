@@ -257,14 +257,14 @@ class StateMetric(BaseMetric):
         return {k: self.meter[k].val for k in self.meter}
 
     def record_output(self, output, target):
-        output_state_tensor = output['state_tensor']
-        target_state_tensor = target['state_tensor']
+        output_state_tensor = output['denorm_state_tensor']
+        target_state_tensor = target['denorm_state_tensor']
         batch_size = output_state_tensor.shape[0]
 
-        pos_loss = torch.abs(output_state_tensor[:, :3] - target_state_tensor[:, :3]).norm(dim=-1).mean()
-        rot_loss = torch.abs(output_state_tensor[:, 3:7] - target_state_tensor[:, 3:7]).norm(dim=-1).mean()
-        vel_loss = torch.abs(output_state_tensor[:, 7:10] - target_state_tensor[:, 7:10]).norm(dim=-1).mean()
-        omg_loss = torch.abs(output_state_tensor[:, 10:] - target_state_tensor[:, 10:]).norm(dim=-1).mean()
+        pos_loss = torch.abs(output_state_tensor[:, :3] - target_state_tensor[:, :3] ).mean()
+        rot_loss = torch.abs(output_state_tensor[:, 3:7] - target_state_tensor[:, 3:7]).mean()
+        vel_loss = torch.abs(output_state_tensor[:, 7:10] - target_state_tensor[:, 7:10]).mean()
+        omg_loss = torch.abs(output_state_tensor[:, 10:] - target_state_tensor[:, 10:]).mean()
 
         self.meter['avg_position'].update(pos_loss, batch_size)
         self.meter['avg_rotation'].update(rot_loss, batch_size)

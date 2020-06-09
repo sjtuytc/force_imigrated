@@ -21,7 +21,8 @@ class NSDatasetManager:
 
         if check_succ:
             all_succ = output_d['succ']
-            if False in all_succ:
+            succ_indicator = min(all_succ)
+            if succ_indicator < 0.5:
                 return
         obj_name = input_d['initial_state']['object_name']
 
@@ -30,9 +31,9 @@ class NSDatasetManager:
         else:
             self.all_data[obj_name] = []
         self.data_counter += 1
-        if self.data_counter % self.save_freq == 0 or self.args.debug:
-            for obj_name in self.all_data.keys():
+        for obj_name in self.all_data.keys():
+            if self.data_counter % self.save_freq == 0 or self.args.debug:
                 full_path = save_into_json(save_obj=self.all_data[obj_name], folder=self.ns_dataset_p, file_name=obj_name,
                                            verbose=False)
-                print("Data num:", len(self.all_data[obj_name]), 'save path:', full_path)
+                print("Data num:", len(self.all_data[obj_name]), 'obj name:', obj_name)
         return

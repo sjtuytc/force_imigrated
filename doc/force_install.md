@@ -36,7 +36,7 @@ pip install -r requirements.txt
 ```shell
 python data_generator/gen_rgb_obj_coordinates.py --title gen_data --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model BatchCPHeatmapModel --environment NpPhysicsEnv --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 # generate by training
-python main.py --title gen_data_v2 --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchSeparateTowerModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --save_dataset --ns_dataset_p NSDataset_v3 --object_list ALL --data DatasetForce --batch-size 1 train
+python main.py --title gen_data_v4 --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchSeparateTowerModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --save_dataset --ns_dataset_p NSDataset_v4 --object_list ALL --data DatasetForce --batch-size 1 train
 ```
 
 ## Sec3: training/testing
@@ -64,14 +64,14 @@ python main.py --title save_gt_force --batch-size 1 --workers 10 --gpu-ids 1 --n
 
 ```shell
 # train the base model of NS.
-python main.py --title train_ns_v4 --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000  --save_frequency 30 --ns_dataset_p NSDataset_v3 --base-lr 0.0001 --obj_name toy_airplane train
+python main.py --title train_ns_v5 --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000  --save_frequency 30 --ns_dataset_p NSDataset_v4 --base-lr 0.0001 --obj_name toy_airplane train
 ```
 
 3. Testing command:
 
 ```shell
 # test the base model of NS.
-python main.py --title train_ns_v2 --reload /media/data_1/home/zelin/force/LukeForce/DatasetForce/model_state_781.pytar --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000  --save_frequency 30 test
+python main.py --title train_ns_v2 --reload model_state.pytar --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000  --save_frequency 30  --ns_dataset_p NSDataset_v4 --vis test
 
 # test all based on predicted
 python main.py --title test_all_joint_training --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --reload DatasetForce/trained_weights/all_obj_end2end.pytar test

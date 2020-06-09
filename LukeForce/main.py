@@ -12,6 +12,7 @@ from solvers import train, test, save_gt_force
 
 from utils.arg_parser import parse_args
 from datasets.ns_dataset import NSDataset
+from environments.np_physics_env import NpPhysicsEnv
 
 
 def get_dataset(args):
@@ -31,6 +32,15 @@ def get_dataset(args):
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=args.batch_size,
         shuffle=test_shuffle, num_workers=args.workers, pin_memory=True)
+
+    # get visualize environment
+    if args.vis:
+        object_path = os.path.join(args.data, 'objects_16k', args.obj_name, 'google_16k', 'textured.urdf')
+        args.vis_env = NpPhysicsEnv(render=args.render, object_name=args.obj_name, object_path=object_path, gravity=args.gravity,
+                                    debug=args.debug, number_of_cp=args.number_of_cp, fps=args.fps, force_multiplier=args.force_multiplier,
+                                    force_h=args.force_h, state_h=args.state_h, qualitative_size=args.qualitative_size, workers=args.workers,
+                                    gpu_ids=args.gpu_ids)
+        args.vis_env.reset()
     return train_loader, val_loader
 
 
@@ -94,6 +104,7 @@ def main():
     logging.info('Constructing model.')
     model, loss, restarting_epoch = get_model_and_loss(args)
     print("Model construction finished!")
+
     if args.mode == 'train':
         optimizer = model.optimizer()
         for i in range(restarting_epoch, args.epochs):

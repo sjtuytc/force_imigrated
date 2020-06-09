@@ -10,10 +10,9 @@ from utils.obj_util import obtain_all_vertices_from_obj
 from scipy.spatial.transform import Rotation as R
 from utils.environment_util import NpEnvState, NpForceValOnly, build_np_env_state_from_dict
 from utils.constants import OBJECT_TO_SCALE, CONTACT_POINT_MASK_VALUE, GRAVITY_VALUE
-from utils.projection_utils import np_get_cp_projection, np_get_model_vertex_projection, put_keypoints_on_image
 
 
-# physics environment utilizes numpy.
+# physics environment utilizing numpy.
 class NpPhysicsEnv(BaseBulletEnv):
 
     def __init__(self, render, object_name, object_path, gravity, debug, number_of_cp, fps, force_multiplier,
@@ -75,6 +74,7 @@ class NpPhysicsEnv(BaseBulletEnv):
         return np.stack([normal_begin_vec, normal_end_vec], axis=1)
 
     def check_force_hit(self, contact_point, surface_normal, force_value):
+        # what is the meaning of this function?
         d = -np.sum(contact_point * surface_normal)
         force_secondary_point = contact_point + force_value
         side_of_force = np.sum(force_secondary_point * surface_normal) + d

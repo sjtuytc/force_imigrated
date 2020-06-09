@@ -48,9 +48,9 @@ class StateEstimationLoss(BasicLossFunction):
         }
 
     def forward(self, output_t, target_t):
-        output_state = output_t['state_tensor']
+        output_state = output_t['norm_state_tensor']
         bs = output_state.shape[0]
-        target_state = target_t['state_tensor']
+        target_state = target_t['norm_state_tensor']
         loss_state_estimation_value = self.l1_loss(output_state, target_state)
         loss_dict = {
             'state_prediction': loss_state_estimation_value,

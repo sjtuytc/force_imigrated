@@ -60,11 +60,13 @@ class NSDataset(data.Dataset):
             all_omega.append(omega)
         all_forces, all_cps, all_position, all_rotation, all_velocity, all_omega = np.array(all_forces), np.array(all_cps), \
             np.array(all_position), np.array(all_rotation), np.array(all_velocity), np.array(all_omega)
+
         return_sta = {'force_mean': np.mean(all_forces, axis=0), 'force_std': np.std(all_forces, axis=0), 'cp_mean': np.mean(all_cps, axis=0),
                       'cp_std': np.std(all_cps, axis=0), 'position_mean': np.mean(all_position, axis=0),
                       'position_std': np.std(all_position, axis=0), 'rotation_mean': np.mean(all_rotation, axis=0),
                       'rotation_std': np.std(all_rotation, axis=0), 'velocity_mean': np.mean(all_velocity, axis=0),
-                      'velocity_std': np.std(all_velocity, axis=0), 'omega_mean': np.mean(all_omega, axis=0), 'omega_std': np.std(all_omega, axis=0)}
+                      'velocity_std': np.std(all_velocity, axis=0), 'omega_mean': np.mean(all_omega, axis=0),
+                      'omega_std': np.std(all_omega, axis=0)}
         return return_sta
 
     def __len__(self):
@@ -88,15 +90,17 @@ class NSDataset(data.Dataset):
         force_tensor, cp_tensor = torch.Tensor(output_d['force_values']), torch.Tensor(output_d['loc'])
         norm_force, norm_cp = norm_tensor(norm_or_denorm=True, tensor=force_tensor, mean_tensor=fm, std_tensor=fst), \
                               norm_tensor(norm_or_denorm=True, tensor=cp_tensor, mean_tensor=cpm, std_tensor=cpstd)
+
         input_dict = {
-            'force': norm_force,
-            'contact_points': norm_cp,
+            'norm_force': norm_force,
+            'norm_contact_points': norm_cp,
             'state_dict': isd,
-            'state_tensor': initial_env_state.toTensor().detach(),
+            'norm_state_tensor': initial_env_state.toTensor().detach(),
         }
 
         labels = {
-            'state_tensor': target_env_state.toTensor().detach(),
+            'norm_state_tensor': target_env_state.toTensor().detach(),
+            'statistics': self.data_statistics,
         }
 
         return input_dict, labels

@@ -3,8 +3,18 @@ import imageio
 import torch
 import torch.nn.functional as F
 from utils.environment_util import EnvState
+from utils.environment_util import NpEnvState
 import numpy as np
 from utils.projection_utils import put_keypoints_on_image, get_set_of_vertices_projection
+
+
+def vis_state(vis_env, obj_name, position, rotation, image_name, save_folder, verbose=True):
+    vis_env.update_object_transformations(object_state=NpEnvState(object_name=obj_name, position=position,
+                                                                    rotation=rotation), object_num=None)
+    rendered_image = vis_env.get_rgb()
+    fp = save_image_to_disk(rendered_image.transpose(1, 0, 2), save_name=image_name, save_dir=save_folder,
+                            verbose=verbose)
+    return fp
 
 
 def save_image_list_to_gif(image_list, gif_name, gif_dir):

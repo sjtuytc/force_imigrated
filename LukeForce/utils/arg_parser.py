@@ -7,7 +7,7 @@ import sys
 import torch
 import pprint
 from utils.logging_util import LoggingModule
-import utils.loss_util as loss
+import solvers.loss_fns as loss
 import time
 import environments
 import datasets
@@ -129,6 +129,7 @@ def parse_args(log_info=True):
     parser.add_argument('--no-pretrain', action='store_false', dest='pretrain')
     parser.add_argument('--object_list', default=['072-a_toy_airplane'], nargs='+', type=str, help='options: ALL or ycb objects')
     parser.add_argument('--gpu-ids', type=int, default=-1, nargs='+', help='GPUs to use [-1 CPU only] (default: -1)')
+    parser.add_argument('--vis', action='store_true', help='visualization test results.')
 
     # options for creating NS dataset and training NS
     parser.add_argument('--ns', action='store_true', help="training or testing neural simulator")
@@ -136,6 +137,7 @@ def parse_args(log_info=True):
     parser.add_argument('--dataset_size', default=1000000, type=int)
     parser.add_argument('--save_freq', default=1000, type=int)
     parser.add_argument('--ns_dataset_p', default='NSDataset_v1', type=str, help='path to save created NS dataset.')
+    parser.add_argument('--vis_f', default='vis_results', type=str, help='path to save created NS dataset.')
     parser.add_argument('--obj_name', default='019_pitcher_base', type=str, help='select one object to test our method.')
     args = parser.parse_args()
 
@@ -164,7 +166,10 @@ def parse_args(log_info=True):
         get_non_default_flags_str(args, parser, 'data', 'save', 'model',
                                   'reload', 'title', 'workers', 'save_frequency', 'batch-size', 'gpu-ids'))
 
+    # set up folders
     os.makedirs(args.save, exist_ok=True)
+    if args.vis:
+        os.makedirs(args.vis_f, exist_ok=True)
     setup_logging(os.path.join(args.save, 'log.txt'), True)
 
     if args.object_list in [['ALL']]:
