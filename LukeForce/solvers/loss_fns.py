@@ -39,19 +39,23 @@ class BasicLossFunction(nn.Module):
 class StateEstimationLoss(BasicLossFunction):
     def __init__(self, args):
         super(BasicLossFunction, self).__init__()
-        self.l1_loss = nn.MSELoss()
+        self.loss_fn = nn.MSELoss()
         self._local_loss_dict = {
             'state_prediction': None,
         }
         self.weights_for_each_loss = {
             'state_prediction': 1.,
         }
+        self.predict_speed = args.predict_speed
 
     def forward(self, output_t, target_t):
         output_state = output_t['norm_state_tensor']
         bs = output_state.shape[0]
         target_state = target_t['norm_state_tensor']
-        loss_state_estimation_value = self.l1_loss(output_state, target_state)
+        if self.predict_speed:
+            loss_state_estimation_value = self.loss_fn(output_state, target_state)
+        else:
+            loss_state_estimation_value = self.loss_fn(output_state[:, :7], target_state[:, :7])
         loss_dict = {
             'state_prediction': loss_state_estimation_value,
         }

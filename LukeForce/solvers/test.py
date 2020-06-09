@@ -7,14 +7,7 @@ from . import metrics
 import tqdm
 import numpy as np
 from utils.visualization_util import vis_state
-
-
-def dict_of_tensor_to_cuda(tensor_dict):
-    for feature in tensor_dict:
-        value = tensor_dict[feature]
-        if issubclass(type(value), torch.Tensor):
-            tensor_dict[feature] = value.float().cuda(non_blocking=True)
-    return tensor_dict
+from utils.tensor_utils import dict_of_tensor_to_cuda
 
 
 def test_one_epoch(model, loss, data_loader, epoch, args):

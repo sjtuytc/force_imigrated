@@ -1,6 +1,6 @@
 import torch
 from utils.quaternion_util import get_quaternion_distance
-
+from utils.quaternion_util import quaternion_to_angle_axis
 
 class AverageMeter(object):
 
@@ -249,6 +249,7 @@ class StateMetric(BaseMetric):
 
         # assert args.mode == 'test' or args.mode == 'testtrain'
         self.istraining = args.mode == 'train'
+        self.predict_speed = args.predict_speed
 
     def average(self):
         return {k: self.meter[k].avg for k in self.meter}
@@ -261,15 +262,20 @@ class StateMetric(BaseMetric):
         target_state_tensor = target['denorm_state_tensor']
         batch_size = output_state_tensor.shape[0]
 
-        pos_loss = torch.abs(output_state_tensor[:, :3] - target_state_tensor[:, :3] ).mean()
-        rot_loss = torch.abs(output_state_tensor[:, 3:7] - target_state_tensor[:, 3:7]).mean()
-        vel_loss = torch.abs(output_state_tensor[:, 7:10] - target_state_tensor[:, 7:10]).mean()
-        omg_loss = torch.abs(output_state_tensor[:, 10:] - target_state_tensor[:, 10:]).mean()
-
+        pos_loss = torch.abs(output_state_tensor[:, :3] - target_state_tensor[:, :3]).mean()
+        quat_difference = torch.mean(output_state_tensor[:, 3:7] - target_state_tensor[:, 3:7], dim=0)
+        angle_difference = quaternion_to_angle_axis(quat_difference) * 180 / 3.141
+        ang_dis = torch.abs(angle_difference).mean()
+        if self.predict_speed:
+            vel_dis = torch.abs(output_state_tensor[:, 7:10] - target_state_tensor[:, 7:10]).mean()
+            omg_dis = torch.abs(output_state_tensor[:, 10:] - target_state_tensor[:, 10:]).mean()
+        else:
+            vel_dis = -1
+            omg_dis = -1
         self.meter['avg_position'].update(pos_loss, batch_size)
-        self.meter['avg_rotation'].update(rot_loss, batch_size)
-        self.meter['avg_omega'].update(omg_loss, batch_size)
-        self.meter['avg_speed'].update(vel_loss, batch_size)
+        self.meter['avg_rotation'].update(ang_dis, batch_size)
+        self.meter['avg_omega'].update(omg_dis, batch_size)
+        self.meter['avg_speed'].update(vel_dis, batch_size)
 
     def report(self):
         report_str = 'Position Dis: {:.3f}; '.format(self.meter['avg_position'].avg)

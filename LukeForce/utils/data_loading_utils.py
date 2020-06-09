@@ -70,13 +70,3 @@ def get_timestamp_to_clip_index(clip_dict):
 def get_time_from_str(time):
     return datetime.datetime.strptime(time, '%Y-%m-%d %H:%M:%S.%f')
 
-
-def norm_tensor(norm_or_denorm, tensor, mean_tensor, std_tensor):
-    tensor, mean_tensor, std_tensor = torch.Tensor(tensor), torch.Tensor(mean_tensor), torch.Tensor(std_tensor)
-    assert mean_tensor.shape == std_tensor.shape == tensor.shape, "tensor shape is not equal to its mean and std"
-    if norm_or_denorm is None:
-        return tensor
-    elif norm_or_denorm:
-        return (tensor - mean_tensor) / std_tensor
-    else:
-        return tensor * std_tensor + mean_tensor

@@ -8,7 +8,7 @@ import random
 import glob
 from utils.data_io import read_from_json
 from utils.environment_util import NormEnvState
-from utils.data_loading_utils import norm_tensor
+from utils.tensor_utils import norm_tensor
 import numpy as np
 
 

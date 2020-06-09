@@ -134,6 +134,7 @@ def parse_args(log_info=True):
     # options for creating NS dataset and training NS
     parser.add_argument('--ns', action='store_true', help="training or testing neural simulator")
     parser.add_argument('--save_dataset', action='store_true')
+    parser.add_argument('--predict_speed', action='store_true')
     parser.add_argument('--dataset_size', default=1000000, type=int)
     parser.add_argument('--save_freq', default=1000, type=int)
     parser.add_argument('--ns_dataset_p', default='NSDataset_v1', type=str, help='path to save created NS dataset.')

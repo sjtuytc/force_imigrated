@@ -4,6 +4,7 @@ import time
 import torch
 from . import metrics
 import tqdm
+from utils.tensor_utils import dict_of_tensor_to_cuda
 
 
 def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
@@ -34,16 +35,11 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
         if 'rgb' in input_dict.keys():
             batch_size = input_dict['rgb'].size(0)
         else:
-            batch_size = input_dict['force'].size(0)
+            batch_size = input_dict['norm_force'].size(0)
         if args.gpu_ids != -1:  # if use gpu
-            for feature in input_dict:
-                value = input_dict[feature]
-                if issubclass(type(value), torch.Tensor):
-                    input_dict[feature] = value.cuda(non_blocking=True)
-            for feature in target_dict:
-                value = target_dict[feature]
-                if issubclass(type(value), torch.Tensor):
-                    target_dict[feature] = value.cuda(non_blocking=True)
+            input_dict = dict_of_tensor_to_cuda(input_dict)
+            target_dict = dict_of_tensor_to_cuda(target_dict)
+            target_dict['statistics'] = dict_of_tensor_to_cuda(target_dict['statistics'])
             data_time_meter.update((time.time() - timestamp) / batch_size, batch_size)
 
             before_forward_pass_time = time.time()

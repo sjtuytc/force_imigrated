@@ -174,7 +174,7 @@ class NpPhysicsEnv(BaseBulletEnv):
         return rotated_vertices + position.reshape(1, 3)
 
     def get_rotation_mat(self, state):
-        # transfer to scalar-last format.
+        # transfer to scalar-last format. (w, x, y, z) -> (x, y, z, w)
         scalar_first = state.rotation.tolist()
         scalar_last = scalar_first[1:] + [scalar_first[0]]
         quat = R.from_quat(scalar_last)

@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 from utils.constants import ALL_OBJECTS
-from utils.data_loading_utils import norm_tensor
+from utils.tensor_utils import norm_tensor
 
 REGISTERED_OBJECTS = ALL_OBJECTS
 
