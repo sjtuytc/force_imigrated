@@ -175,9 +175,11 @@ class NormEnvState:
                  omega_mean=None, omega_std=None, velocity=None, omega=None, device=None):
         if velocity is None:
             velocity = torch.tensor([0., 0., 0.], device=position.device, requires_grad=True)
+        else:
             velocity = norm_tensor(norm_or_denorm=norm_or_denorm, tensor=velocity, mean_tensor=velocity_mean, std_tensor=velocity_std)
         if omega is None:
             omega = torch.tensor([0., 0., 0.], device=position.device, requires_grad=True)
+        else:
             omega = norm_tensor(norm_or_denorm=norm_or_denorm, tensor=omega, mean_tensor=omega_mean, std_tensor=omega_std)
         assert len(position) == 3 and len(rotation) == 4 and len(velocity) == 3 and len(omega) == 3
         position = norm_tensor(norm_or_denorm=norm_or_denorm, tensor=position, mean_tensor=position_mean, std_tensor=position_std)

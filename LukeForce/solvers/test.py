@@ -2,12 +2,12 @@ import logging
 import os
 import time
 import torch
-import pdb
 from . import metrics
 import tqdm
 import numpy as np
 from utils.visualization_util import vis_state
 from utils.tensor_utils import dict_of_tensor_to_cuda
+from utils.data_io import save_into_pkl
 
 
 def test_one_epoch(model, loss, data_loader, epoch, args):
@@ -30,6 +30,7 @@ def test_one_epoch(model, loss, data_loader, epoch, args):
 
         # Iterate over data
         timestamp = time.time()
+        all_results = []
         for i, (input_dict, target_dict) in enumerate(tqdm.tqdm(data_loader)):
             # Move data to gpu
             if 'rgb' in input_dict.keys():
@@ -40,12 +41,29 @@ def test_one_epoch(model, loss, data_loader, epoch, args):
             if args.gpu_ids != -1:
                 input_dict = dict_of_tensor_to_cuda(input_dict)
                 target_dict = dict_of_tensor_to_cuda(target_dict)
-                target_dict['statistics'] = dict_of_tensor_to_cuda(target_dict['statistics'])
+                if 'statistics' in target_dict.keys():
+                    target_dict['statistics'] = dict_of_tensor_to_cuda(target_dict['statistics'])
             data_time_meter.update((time.time() - timestamp) / batch_size, batch_size)
 
             before_forward_pass_time = time.time()
             # Forward pass
             model_output, target_output = model(input_dict, target_dict)
+            if args.save_dataset:
+                # input_dict: ['rgb', 'initial_position', 'initial_rotation', 'initial_keypoint', 'object_name',
+                # 'contact_points', 'timestamps']
+                # target_dict: ['keypoints', 'position', 'rotation', 'contact_points', 'object_name']
+                # model_output: ['keypoints', 'rotation', 'position', 'force_success_flag', 'force_applied',
+                # 'force_direction', 'contact_points']
+                cur_result = {'initial_position': input_dict['initial_position'].cpu().tolist()[0],
+                              'initial_rotation': input_dict['initial_rotation'].cpu().tolist()[0],
+                              'object_name': input_dict['object_name'][0],
+                              'model_contact_points': model_output['contact_points'].cpu().tolist()[0],
+                              'timestamps': input_dict['timestamps'], 'model_position': model_output['position'].cpu().tolist()[0],
+                              'model_rotation': model_output['rotation'].cpu().tolist()[0],
+                              'force_applied': model_output['force_applied'].cpu().tolist()[0]}
+                all_results.append(cur_result)
+                if i % args.save_freq == 0 or i == len(data_loader) - 1:
+                    save_into_pkl(all_results, folder=args.ns_dataset_p, name='all_data', verbose=True)
             forward_pass_time_meter.update((time.time() - before_forward_pass_time) / batch_size, batch_size)
 
             before_loss_time = time.time()

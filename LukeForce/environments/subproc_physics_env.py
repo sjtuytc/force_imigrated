@@ -4,7 +4,7 @@ import torch
 import multiprocessing as mp
 from utils.multi_process import CloudpickleWrapper, clear_mpi_env_vars
 
-from data_generator.ns_force_dataset_manager import NSDatasetManager
+# from data_generator.ns_force_dataset_manager import NSDatasetManager
 
 
 def _flatten_list(l):
@@ -99,11 +99,11 @@ class SubprocPhysicsEnv:
             p.start()
         for remote in self.work_remotes:
             remote.close()
-        self.save_dataset = args.save_dataset
-        if self.save_dataset:
-            self.dataset_manager = NSDatasetManager(args)
-        else:
-            self.dataset_manager = None
+        # self.save_dataset = args.save_dataset
+        # if self.save_dataset:
+        #     self.dataset_manager = NSDatasetManager(args)
+        # else:
+        #     self.dataset_manager = None
 
     # batch functions.
     def _assert_not_closed(self):
@@ -131,8 +131,8 @@ class SubprocPhysicsEnv:
     def batch_init_locations_and_apply_force(self, batch_data):
         self.batch_async(batch_data=batch_data)
         batch_result = self.batch_wait()
-        if self.save_dataset:
-            self.dataset_manager.insert_one_data(input_d=batch_data, output_d=batch_result, is_batch=True)
+        # if self.save_dataset:
+        #     self.dataset_manager.insert_one_data(input_d=batch_data, output_d=batch_result, is_batch=True)
         return batch_result
 
     def close_extras(self):

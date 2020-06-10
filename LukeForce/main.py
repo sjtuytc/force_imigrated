@@ -114,7 +114,7 @@ def main():
                 torch.save(model.state_dict(), os.path.join(args.save, 'model_state_{:02d}.pytar'.format(i + 1)))
             test.test_one_epoch(model, loss, val_loader, i + 1, args)
     elif args.mode == 'test' or args.mode == 'testtrain':
-        if args.mode == 'testtrain':
+        if args.mode == 'testtrain' or args.save_dataset:
             val_loader = train_loader
         if args.reload_dir is not None:
             all_saved_models = [f for f in os.listdir(args.reload_dir) if f.endswith('.pytar')]

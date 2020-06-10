@@ -18,4 +18,3 @@ def dict_of_tensor_to_cuda(tensor_dict):
         if issubclass(type(value), torch.Tensor):
             tensor_dict[feature] = value.float().cuda(non_blocking=True)
     return tensor_dict
-

@@ -118,7 +118,8 @@ class SeparateTowerModel(BaseModel):
         input_embedded_contact_point = torch.cat([image_features_contact_point, object_features_contact_point], dim=-1)
         embedded_sequence_contact_point, (_, _) = self.contact_point_encoder(input_embedded_contact_point)
         contact_points_prediction = self.contact_point_decoder(embedded_sequence_contact_point).view(
-            batch_size, seq_len, self.number_of_cp, 3)[:, -1, :, :]  # Predict contact point for each image
+            batch_size, seq_len, self.number_of_cp, 3)[:, -1, :, :]
+        # Predict contact point for each image and get the last prediction
 
         # Force prediction tower
         image_features_force = self.image_embed(image_features.view(batch_size * seq_len, 512, 7, 7)).view(
@@ -194,7 +195,7 @@ class SeparateTowerModel(BaseModel):
 
         contact_points_prediction = contact_points_prediction.unsqueeze(1).repeat(1, seq_len, 1, 1)
 
-        output = {
+        output_dict = {
             'keypoints': all_keypoints,
             'rotation': resulting_rotation,
             'position': resulting_position,
@@ -206,7 +207,7 @@ class SeparateTowerModel(BaseModel):
 
         target['object_name'] = input_dict['object_name']
 
-        return output, target
+        return output_dict, target
 
     def optimizer(self):
         return torch.optim.Adam(self.parameters(), lr=self.base_lr)

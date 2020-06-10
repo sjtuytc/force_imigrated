@@ -135,8 +135,9 @@ def parse_args(log_info=True):
     parser.add_argument('--ns', action='store_true', help="training or testing neural simulator")
     parser.add_argument('--save_dataset', action='store_true')
     parser.add_argument('--predict_speed', action='store_true')
+    parser.add_argument('--residual', action='store_true', help='predict residual')
     parser.add_argument('--dataset_size', default=1000000, type=int)
-    parser.add_argument('--save_freq', default=1000, type=int)
+    parser.add_argument('--save_freq', default=100, type=int)
     parser.add_argument('--ns_dataset_p', default='NSDataset_v1', type=str, help='path to save created NS dataset.')
     parser.add_argument('--vis_f', default='vis_results', type=str, help='path to save created NS dataset.')
     parser.add_argument('--obj_name', default='019_pitcher_base', type=str, help='select one object to test our method.')
@@ -171,6 +172,8 @@ def parse_args(log_info=True):
     os.makedirs(args.save, exist_ok=True)
     if args.vis:
         os.makedirs(args.vis_f, exist_ok=True)
+    if args.save_dataset:
+        os.makedirs(args.ns_dataset_p, exist_ok=True)
     setup_logging(os.path.join(args.save, 'log.txt'), True)
 
     if args.object_list in [['ALL']]:
