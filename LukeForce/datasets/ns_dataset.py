@@ -9,20 +9,36 @@ import glob
 from utils.data_io import read_from_json, read_from_pkl
 from utils.environment_util import NormEnvState
 from utils.tensor_utils import norm_tensor
+from utils.custom_quaternion import *
 import numpy as np
+from IPython import embed
 
 
 class NSDataset(data.Dataset):
-    def __init__(self, obj_name, root_dir, train_val_rate, train=True, data_statistics=None):
+    def __init__(self, obj_name, root_dir, train_val_rate, train=True, filter_d=True, data_statistics=None):
         self.obj_name = obj_name
         self.root_dir = root_dir
         self.train_val_rate = train_val_rate
+        self.filter_d = filter_d
         self.train = train
         self.data = self.load_dataset()
         if self.train:
             self.data_statistics = self.cal_statistics()
         else:
             self.data_statistics = data_statistics
+
+    def filter_data(self, raw_data):
+        final_data = []
+        for idx, ele in enumerate(raw_data):
+            pos_before, pos_after = torch.Tensor(ele['initial_position']), torch.Tensor(ele['model_position'][0])
+            rot_before, rot_after = torch.Tensor(ele['initial_rotation']), torch.Tensor(ele['model_rotation'][0])
+            if max(abs(pos_before - pos_after)) > 0.04:
+                continue
+            angle_before, angle_after = quaternion_to_euler_angle(rot_before), quaternion_to_euler_angle(rot_after)
+            if max(abs(angle_after - angle_before)) > 20:
+                continue
+            final_data.append(ele)
+        return final_data
 
     def load_dataset(self):
         files = glob.glob(os.path.join(self.root_dir, '*.pkl'))
@@ -35,11 +51,14 @@ class NSDataset(data.Dataset):
                 if one_data['object_name'] == self.obj_name:
                     new_data.append(one_data)
             all_data = new_data
-        random.seed(0)
-        random.shuffle(all_data)
+        if self.filter_d:
+            all_data = self.filter_data(all_data)
+        # random.seed(0)
+        # random.shuffle(all_data)
         split_ind = int(self.train_val_rate * len(all_data))
         print("Total number:", len(all_data), "; split number:", split_ind, ".")
         final_d = all_data[:split_ind] if self.train else all_data[split_ind:]
+        # embed()
         return final_d
 
     def cal_statistics(self):

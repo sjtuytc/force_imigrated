@@ -1,7 +1,7 @@
 import torch
 
 
-def norm_tensor(norm_or_denorm, tensor, mean_tensor, std_tensor):
+def norm_tensor(norm_or_denorm: object, tensor: object, mean_tensor: object, std_tensor: object) -> object:
     tensor, mean_tensor, std_tensor = torch.Tensor(tensor), torch.Tensor(mean_tensor), torch.Tensor(std_tensor)
     assert mean_tensor.shape == std_tensor.shape == tensor.shape, "tensor shape is not equal to its mean and std"
     if norm_or_denorm is None:

@@ -188,8 +188,7 @@ class NormEnvState:
             [position, rotation, velocity, omega] = [x.to(device) for x in [position, rotation, velocity, omega]]
 
         # ((1+0.01*z)/(1+2z*0.01+0.01^2)) -> function of diff of (w,x,y,z) - (w,x,y,z+eps)
-        rotation = F.normalize(rotation.unsqueeze(0)).squeeze(0)
-
+        # rotation = F.normalize(rotation.unsqueeze(0)).squeeze(0)
         self.position = position
         self.rotation = rotation
         self.velocity = velocity

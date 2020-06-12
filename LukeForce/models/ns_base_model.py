@@ -9,18 +9,24 @@ class MlpLayer(nn.Module):
     def __init__(self, input_d, output_d):
         super(MlpLayer, self).__init__()
         self.fc1 = nn.Linear(input_d, 64)
-        self.fc2 = nn.Linear(64, output_d)
-        # self.fc3 = nn.Linear(64, 64)
-        # self.bn1 = nn.BatchNorm1d(num_features=64)
-        # self.bn2 = nn.BatchNorm1d(num_features=64)
-        # self.bn3 = nn.BatchNorm1d(num_features=64)
-        # self.output_fc = nn.Linear(64, output_d)
+        self.fc2 = nn.Linear(64, 64)
+        self.fc3 = nn.Linear(64, 64)
+        self.fc4 = nn.Linear(64, 64)
+        self.fc5 = nn.Linear(64, 64)
+        self.bn1 = nn.BatchNorm1d(num_features=64)
+        self.bn2 = nn.BatchNorm1d(num_features=64)
+        self.bn3 = nn.BatchNorm1d(num_features=64)
+        self.bn4 = nn.BatchNorm1d(num_features=64)
+        self.bn5 = nn.BatchNorm1d(num_features=64)
+        self.output_fc = nn.Linear(64, output_d)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        # x = F.relu(self.fc3(x))
-        # x = self.output_fc(x)
+        x = F.relu(self.bn1(self.fc1(x)))
+        x = F.relu(self.bn2(self.fc2(x)))
+        x = F.relu(self.bn3(self.fc3(x)))
+        x = F.relu(self.bn4(self.fc4(x)))
+        x = F.relu(self.bn5(self.fc5(x)))
+        x = self.output_fc(x)
         return x
 
 
@@ -67,12 +73,12 @@ class NSBaseModel(BaseModel):
         cp_feature = self.cp_encoder(contact_points)
         fused_feature = torch.cat([force_feature, state_feature, cp_feature], dim=-1)
         predict_state = self.force_decoder(fused_feature)
-        predict_state = F.normalize(predict_state)
         if self.residual:
             predict_state = state_tensor + predict_state
         sta = {one_key: target_d['statistics'][one_key].squeeze() for one_key in target_d['statistics']}
         target_d['norm_state_tensor'] = target_d['norm_state_tensor'].reshape(batch_size, -1)
         target_d['denorm_state_tensor'] = get_denorm_state_tensor(state_ten=target_d['norm_state_tensor'], stat=sta)
+        target_d['denorm_input_state'] = get_denorm_state_tensor(state_ten=state_tensor.clone().detach(), stat=sta)
         denorm_predict_state = get_denorm_state_tensor(state_ten=predict_state.clone(), stat=sta)
         output_d = {
             'norm_state_tensor': predict_state,

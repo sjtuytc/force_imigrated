@@ -80,11 +80,10 @@ python main.py --title old_train_ns_v6 --sequence_length 10 --ns --gpu-ids 0 --n
 
 ```shell
 # test the base model of NS.
-python main.py --title train_ns_v3 --reload model_state.pytar --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000  --save_frequency 30  --ns_dataset_p NSDataset_v4 --vis test
+python main.py --title train_ns_v3 --reload model_state.pytar --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 1 --break-batch 1 --epochs 1000  --save_frequency 30  --ns_dataset_p NSDatasetV5 --vis test
 
 # test all based on predicted
 python main.py --title test_all_joint_training --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --reload DatasetForce/trained_weights/all_obj_end2end.pytar test
-
 ```
 
 ```shell

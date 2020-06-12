@@ -1,6 +1,7 @@
 import torch
 from utils.quaternion_util import get_quaternion_distance
-from utils.quaternion_util import quaternion_to_angle_axis
+from utils.transformations import euler_from_quaternion
+
 
 class AverageMeter(object):
 
@@ -239,13 +240,20 @@ class CPMetric(BaseMetric):
         return 'CPMetric:{}'.format((self.meter['average_cp'].avg)).replace('\n', '; ')
 
 
+def cal_euler_diffrence(quat_a, quat_b):
+    euler_a = euler_from_quaternion(quat_a, axes='rxyz')
+    euler_b = euler_from_quaternion(quat_b, axes='rxyz')
+    diff_result = torch.abs(torch.Tensor(euler_a) - torch.Tensor(euler_b)).mean() * 180 / 3.14159
+    return diff_result
+
+
 class StateMetric(BaseMetric):
     def __init__(self, args):
         super(StateMetric, self).__init__()
         self.object_list = args.object_list
         self.sequence_length = args.sequence_length
         self.meter = {'avg_position': AverageMeter(), 'avg_rotation': AverageMeter(), 'avg_omega': AverageMeter(),
-                      'avg_speed': AverageMeter()}
+                      'avg_speed': AverageMeter(), 'base_pos': AverageMeter(), 'base_rot': AverageMeter()}
 
         # assert args.mode == 'test' or args.mode == 'testtrain'
         self.istraining = args.mode == 'train'
@@ -258,14 +266,16 @@ class StateMetric(BaseMetric):
         return {k: self.meter[k].val for k in self.meter}
 
     def record_output(self, output, target):
-        output_state_tensor = output['denorm_state_tensor']
-        target_state_tensor = target['denorm_state_tensor']
+        output_state_tensor = output['denorm_state_tensor'].detach()
+        target_state_tensor = target['denorm_state_tensor'].detach()
+        input_state_tensor = target['denorm_input_state'].detach()
         batch_size = output_state_tensor.shape[0]
 
         pos_loss = torch.abs(output_state_tensor[:, :3] - target_state_tensor[:, :3]).mean()
-        quat_difference = torch.mean(output_state_tensor[:, 3:7] - target_state_tensor[:, 3:7], dim=0)
-        angle_difference = quaternion_to_angle_axis(quat_difference) * 180 / 3.141
-        ang_dis = torch.abs(angle_difference).mean()
+        base_pos_diff = torch.abs(input_state_tensor[:, :3] - target_state_tensor[:, :3]).mean()
+
+        ang_dis = cal_euler_diffrence(output_state_tensor[0][3:7].cpu(), target_state_tensor[0][3:7].cpu())
+        base_ang_dis = cal_euler_diffrence(input_state_tensor[0][3:7].cpu(), target_state_tensor[0][3:7].cpu())
         if self.predict_speed:
             vel_dis = torch.abs(output_state_tensor[:, 7:10] - target_state_tensor[:, 7:10]).mean()
             omg_dis = torch.abs(output_state_tensor[:, 10:] - target_state_tensor[:, 10:]).mean()
@@ -276,10 +286,14 @@ class StateMetric(BaseMetric):
         self.meter['avg_rotation'].update(ang_dis, batch_size)
         self.meter['avg_omega'].update(omg_dis, batch_size)
         self.meter['avg_speed'].update(vel_dis, batch_size)
+        self.meter['base_pos'].update(base_pos_diff, batch_size)
+        self.meter['base_rot'].update(base_ang_dis, batch_size)
 
     def report(self):
         report_str = 'Position Dis: {:.3f}; '.format(self.meter['avg_position'].avg)
         report_str += 'Rotation Dis: {:.3f}; '.format(self.meter['avg_rotation'].avg)
+        report_str += 'Pos Copy Dis: {:.3f}; '.format(self.meter['base_pos'].avg)
+        report_str += 'Rot Copy Dis: {:.3f}; '.format(self.meter['base_rot'].avg)
         report_str += 'Omega Dis: {:.3f}; '.format(self.meter['avg_omega'].avg)
         report_str += 'Vel Dis: {:.3f}.'.format(self.meter['avg_speed'].avg)
         return report_str

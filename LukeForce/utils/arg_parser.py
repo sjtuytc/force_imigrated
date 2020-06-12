@@ -79,7 +79,7 @@ def get_non_default_flags_str(args, parser, *ignore):
     return '+'.join(flags)
 
 
-def parse_args(log_info=True):
+def parse_args(log_info=True, save_log=True):
 
     parser = argparse.ArgumentParser(description='Touch torch')
     parser.add_argument('mode', default='train', nargs='?',choices=('train', 'test', 'testtrain', 'savegtforce'))
@@ -169,12 +169,13 @@ def parse_args(log_info=True):
                                   'reload', 'title', 'workers', 'save_frequency', 'batch-size', 'gpu-ids'))
 
     # set up folders
-    os.makedirs(args.save, exist_ok=True)
-    if args.vis:
-        os.makedirs(args.vis_f, exist_ok=True)
-    if args.save_dataset:
-        os.makedirs(args.ns_dataset_p, exist_ok=True)
-    setup_logging(os.path.join(args.save, 'log.txt'), True)
+    if save_log:
+        os.makedirs(args.save, exist_ok=True)
+        if args.vis:
+            os.makedirs(args.vis_f, exist_ok=True)
+        if args.save_dataset:
+            os.makedirs(args.ns_dataset_p, exist_ok=True)
+        setup_logging(os.path.join(args.save, 'log.txt'), True)
 
     if args.object_list in [['ALL']]:
         if args.object_list == ['ALL']:
