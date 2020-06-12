@@ -13,6 +13,8 @@ from solvers import train, test, save_gt_force
 from utils.arg_parser import parse_args
 from datasets.ns_dataset import NSDataset
 from environments.np_physics_env import NpPhysicsEnv
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 
 def get_dataset(args):
@@ -27,11 +29,11 @@ def get_dataset(args):
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size,
-        shuffle=True, num_workers=args.workers, pin_memory=True)
+        shuffle=True, num_workers=args.workers, pin_memory=False)
     test_shuffle = True
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=args.batch_size,
-        shuffle=test_shuffle, num_workers=args.workers, pin_memory=True)
+        shuffle=test_shuffle, num_workers=args.workers, pin_memory=False)
 
     # get visualize environment
     if args.vis:
@@ -105,14 +107,18 @@ def main():
     model, loss, restarting_epoch = get_model_and_loss(args)
     print("Model construction finished!")
 
+    lowest_train_loss = np.inf
     if args.mode == 'train':
         optimizer = model.optimizer()
         for i in range(restarting_epoch, args.epochs):
             print('Epoch[', i, ']')
-            train.train_one_epoch(model, loss, optimizer, train_loader, i + 1, args)
-            if i % args.save_frequency == 0:
+            train_loss = train.train_one_epoch(model, loss, optimizer, train_loader, i + 1, args)
+            if args.save_frequency != -1 and i % args.save_frequency == 0:
                 torch.save(model.state_dict(), os.path.join(args.save, 'model_state_{:02d}.pytar'.format(i + 1)))
-            test.test_one_epoch(model, loss, val_loader, i + 1, args)
+            test_loss = test.test_one_epoch(model, loss, val_loader, i + 1, args)
+            if train_loss < lowest_train_loss:
+                lowest_train_loss = train_loss
+                torch.save(model.state_dict(), os.path.join(args.save, 'best_model.pytar'.format(i + 1)))
     elif args.mode == 'test' or args.mode == 'testtrain':
         if args.mode == 'testtrain' or args.save_dataset:
             val_loader = train_loader

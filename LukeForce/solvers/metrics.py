@@ -1,6 +1,6 @@
 import torch
 from utils.quaternion_util import get_quaternion_distance
-from utils.transformations import euler_from_quaternion
+from utils.custom_quaternion import quaternion_to_euler_angle
 
 
 class AverageMeter(object):
@@ -241,9 +241,8 @@ class CPMetric(BaseMetric):
 
 
 def cal_euler_diffrence(quat_a, quat_b):
-    euler_a = euler_from_quaternion(quat_a, axes='rxyz')
-    euler_b = euler_from_quaternion(quat_b, axes='rxyz')
-    diff_result = torch.abs(torch.Tensor(euler_a) - torch.Tensor(euler_b)).mean() * 180 / 3.14159
+    euler_a, euler_b = quaternion_to_euler_angle(quat_a), quaternion_to_euler_angle(quat_b)
+    diff_result = torch.abs(torch.Tensor(euler_a) - torch.Tensor(euler_b)).mean()
     return diff_result
 
 

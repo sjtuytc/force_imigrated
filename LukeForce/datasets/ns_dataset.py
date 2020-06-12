@@ -15,13 +15,15 @@ from IPython import embed
 
 
 class NSDataset(data.Dataset):
-    def __init__(self, obj_name, root_dir, train_val_rate, train=True, filter_d=True, data_statistics=None):
+    def __init__(self, obj_name, root_dir, train_val_rate, train_num=3, train=True, filter_d=True, data_statistics=None):
         self.obj_name = obj_name
         self.root_dir = root_dir
         self.train_val_rate = train_val_rate
         self.filter_d = filter_d
         self.train = train
         self.data = self.load_dataset()
+        if train_num is not None and self.train:
+            self.data = self.data[:train_num]
         if self.train:
             self.data_statistics = self.cal_statistics()
         else:
@@ -38,6 +40,7 @@ class NSDataset(data.Dataset):
             if max(abs(angle_after - angle_before)) > 20:
                 continue
             final_data.append(ele)
+            del pos_before, pos_after, rot_before, rot_after
         return final_data
 
     def load_dataset(self):

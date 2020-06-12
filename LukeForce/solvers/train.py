@@ -44,17 +44,17 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
 
             before_forward_pass_time = time.time()
             # Forward pass
-            output, target_output = model(input_dict, target_dict)
+            model_output, target_output = model(input_dict, target_dict)
             forward_pass_time_meter.update((time.time() - before_forward_pass_time) / batch_size, batch_size)
             before_loss_time = time.time()
-            loss_output = loss(output, target_output)
+            loss_output = loss(model_output, target_output)
             loss_time_meter.update((time.time() - before_loss_time) / batch_size, batch_size)
 
             before_backward_time = time.time()
             loss_output.backward()
             backward_time_meter.update((time.time() - before_backward_time) / batch_size, batch_size)
 
-            output = {f: output[f].detach() for f in output.keys()}
+            model_output = {f: model_output[f].detach() for f in model_output.keys()}
             if i % args.break_batch == 0 or i == len(data_loader) - 1:
                 optimizer.step()
                 optimizer.zero_grad()
@@ -64,7 +64,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
             before_metrics_time = time.time()
             with torch.no_grad():
                 for acc in accuracy_metric:
-                    acc.record_output(output, target_output)
+                    acc.record_output(model_output, target_output)
             metrics_time_meter.update((time.time() - before_metrics_time) / batch_size, batch_size)
             batch_time_meter.update((time.time() - timestamp), batch_size)
 
@@ -119,7 +119,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
             training_summary = ('Epoch: [{}] -- TRAINING SUMMARY\t'.format(epoch) +
                                 'Time {batch_time:.2f}   Data {data_time:.2f}  Loss {loss:.6f}  {accuracy_report}'.
                                 format(batch_time=batch_time_meter.avg, data_time=data_time_meter.avg, loss=loss_meter.avg,
-                                        accuracy_report='\n'.join([ac.final_report() for ac in accuracy_metric])))
+                                       accuracy_report='\n'.join([ac.final_report() for ac in accuracy_metric])))
         else:
             training_summary = ""
         if i % 50 == 0 or i == len(data_loader) - 1:
@@ -128,3 +128,4 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
                 os.path.join(args.save, 'train.log')))
             with open(os.path.join(args.save, 'train.log'), 'a') as fp:
                 fp.write('{}\n'.format(training_summary))
+        return loss_meter.avg

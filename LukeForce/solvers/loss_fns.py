@@ -47,6 +47,7 @@ class StateEstimationLoss(BasicLossFunction):
             'state_prediction': 1.,
         }
         self.predict_speed = args.predict_speed
+        self.balance = args.balance
 
     def forward(self, output_t, target_t):
         output_state = output_t['norm_state_tensor']
@@ -55,7 +56,9 @@ class StateEstimationLoss(BasicLossFunction):
         if self.predict_speed:
             loss_state_estimation_value = self.loss_fn(output_state, target_state)
         else:
-            loss_state_estimation_value = self.loss_fn(output_state[:, :7], target_state[:, :7])
+            pos_loss = self.loss_fn(output_state[:, :3], target_state[:, :3])
+            rot_loss = self.loss_fn(output_state[:, 3:7], target_state[:, 3:7])
+            loss_state_estimation_value = pos_loss + self.balance * rot_loss
         loss_dict = {
             'state_prediction': loss_state_estimation_value,
         }

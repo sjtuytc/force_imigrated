@@ -155,3 +155,4 @@ def test_one_epoch(model, loss, data_loader, epoch, args):
 
     with open(os.path.join(args.save, 'test.log'), 'a') as fp:
         fp.write('{}\n'.format(testing_summary))
+    return loss_meter.avg

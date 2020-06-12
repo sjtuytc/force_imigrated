@@ -77,7 +77,7 @@ class NSBaseModel(BaseModel):
             predict_state = state_tensor + predict_state
         sta = {one_key: target_d['statistics'][one_key].squeeze() for one_key in target_d['statistics']}
         target_d['norm_state_tensor'] = target_d['norm_state_tensor'].reshape(batch_size, -1)
-        target_d['denorm_state_tensor'] = get_denorm_state_tensor(state_ten=target_d['norm_state_tensor'], stat=sta)
+        target_d['denorm_state_tensor'] = get_denorm_state_tensor(state_ten=target_d['norm_state_tensor'].clone(), stat=sta)
         target_d['denorm_input_state'] = get_denorm_state_tensor(state_ten=state_tensor.clone().detach(), stat=sta)
         denorm_predict_state = get_denorm_state_tensor(state_ten=predict_state.clone(), stat=sta)
         output_d = {

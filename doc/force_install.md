@@ -70,7 +70,7 @@ python main.py --title save_gt_force --batch-size 1 --workers 10 --gpu-ids 1 --n
 python main.py --title base_ns_model --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000  --save_frequency 30 --ns_dataset_p NSDatasetV5 --obj_name 019_pitcher_base train
 
 # residual change
-python main.py --title base_ns_model --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000  --save_frequency 30 --ns_dataset_p NSDatasetV5 --obj_name 019_pitcher_base --residual train
+python main.py --title base_ns_model --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000 --ns_dataset_p NSDatasetV5 --obj_name 019_pitcher_base --residual train
 
 # predict speed
 python main.py --title old_train_ns_v6 --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000  --save_frequency 30 --ns_dataset_p NSDataset_v4 --base-lr 0.0001 --obj_name toy_airplane train
