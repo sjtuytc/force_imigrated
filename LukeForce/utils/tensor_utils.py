@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 
 def norm_tensor(norm_or_denorm: object, tensor: object, mean_tensor: object, std_tensor: object) -> object:
@@ -17,4 +18,6 @@ def dict_of_tensor_to_cuda(tensor_dict):
         value = tensor_dict[feature]
         if issubclass(type(value), torch.Tensor):
             tensor_dict[feature] = value.float().cuda(non_blocking=True)
+        elif issubclass(type(value), np.ndarray):
+            tensor_dict[feature] = torch.Tensor(value).float().cuda(non_blocking=True)
     return tensor_dict

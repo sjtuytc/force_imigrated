@@ -3,6 +3,8 @@ import torch.nn as nn
 from .base_model import BaseModel
 from solvers import metrics
 import torch.nn.functional as F
+from torch.nn.utils import rnn
+from IPython import embed
 
 
 class MlpLayer(nn.Module):
@@ -41,18 +43,19 @@ def get_denorm_state_tensor(state_ten, stat):
     return state_ten
 
 
-class NSBaseModel(BaseModel):
+class NSLSTMModel(BaseModel):
     metric = [metrics.StateMetric]
 
     def __init__(self, args, ):
-        super(NSBaseModel, self).__init__(args)
+        super(NSLSTMModel, self).__init__(args)
         self.loss_function = args.loss
-        self.force_feature_size, self.state_feature_size, self.cp_feature_size = 64, 64, 64
+        self.layer_num = 2
+        self.force_feature_size, self.state_feature_size, self.cp_feature_size = 32, 32, 32
         self.state_tensor_dim, self.force_tensor_dim, self.cp_tensor_dim = 7, 15, 15
-        self.state_encoder = MlpLayer(input_d=self.state_tensor_dim, output_d=self.state_feature_size)
+        self.state_encoder = nn.LSTM(input_size=self.state_tensor_dim, hidden_size=self.state_feature_size, num_layers=self.layer_num, batch_first=True)
         self.force_encoder = MlpLayer(input_d=self.force_tensor_dim, output_d=self.force_feature_size)
         self.cp_encoder = MlpLayer(input_d=self.cp_tensor_dim, output_d=self.cp_feature_size)
-        self.force_decoder = MlpLayer(input_d=self.state_feature_size + self.force_feature_size + self.cp_feature_size,
+        self.force_decoder = MlpLayer(input_d=self.state_feature_size * self.layer_num + self.force_feature_size + self.cp_feature_size,
                                       output_d=self.state_tensor_dim)
         self.number_of_cp = args.number_of_cp
         self.sequence_length = args.sequence_length
@@ -63,22 +66,23 @@ class NSBaseModel(BaseModel):
         return self.loss_function(args)
 
     def forward(self, input_d, target_d):
-        forces, contact_points, state_tensor = input_d['norm_force'], input_d['norm_contact_points'], \
-                                               input_d['norm_state_tensor']
+        forces, contact_points, norm_state_seq, norm_state_tensor, seq_len = \
+            input_d['norm_force'], input_d['norm_contact_points'], input_d['norm_state_seq'], \
+            input_d['norm_state_tensor'], input_d['seq_len']
         batch_size = forces.shape[0]
-        forces, contact_points, state_tensor = forces.reshape(batch_size, -1), contact_points.reshape(batch_size, -1), \
-                                               state_tensor.reshape(batch_size, -1)
-        force_feature = self.force_encoder(forces)
-        state_feature = self.state_encoder(state_tensor)
-        cp_feature = self.cp_encoder(contact_points)
+        pack_seq = rnn.pack_padded_sequence(norm_state_seq, seq_len, batch_first=True)
+        output, (hidden, cell) = self.state_encoder(pack_seq)
+        state_feature = hidden.transpose(0, 1).reshape(batch_size, -1)
+        force_feature = self.force_encoder(forces.reshape(batch_size, -1))
+        cp_feature = self.cp_encoder(contact_points.reshape(batch_size, -1))
         fused_feature = torch.cat([force_feature, state_feature, cp_feature], dim=-1)
         predict_state = self.force_decoder(fused_feature)
         if self.residual:
-            predict_state = state_tensor + predict_state
+            predict_state = norm_state_tensor + predict_state
         sta = {one_key: target_d['statistics'][one_key].squeeze() for one_key in target_d['statistics']}
         target_d['norm_state_tensor'] = target_d['norm_state_tensor'].reshape(batch_size, -1)
         target_d['denorm_state_tensor'] = get_denorm_state_tensor(state_ten=target_d['norm_state_tensor'].clone(), stat=sta)
-        target_d['denorm_input_state'] = get_denorm_state_tensor(state_ten=state_tensor.clone().detach(), stat=sta)
+        target_d['denorm_input_state'] = get_denorm_state_tensor(state_ten=norm_state_tensor.clone().detach(), stat=sta)
         denorm_predict_state = get_denorm_state_tensor(state_ten=predict_state.clone(), stat=sta)
         output_d = {
             'norm_state_tensor': predict_state,

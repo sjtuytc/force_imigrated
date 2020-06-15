@@ -59,6 +59,7 @@ class StateEstimationLoss(BasicLossFunction):
             pos_loss = self.loss_fn(output_state[:, :3], target_state[:, :3])
             rot_loss = self.loss_fn(output_state[:, 3:7], target_state[:, 3:7])
             loss_state_estimation_value = pos_loss + self.balance * rot_loss
+            loss_state_estimation_value /= (1 + self.balance)
         loss_dict = {
             'state_prediction': loss_state_estimation_value,
         }

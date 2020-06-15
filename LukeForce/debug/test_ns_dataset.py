@@ -48,9 +48,9 @@ def get_all_property(dataset, name):
 
 
 def plot_distribution():
-    root_dir = "NSDatasetV5/"
-    train_d = NSDataset(obj_name='019_pitcher_base', root_dir=root_dir, train_val_rate=0.9, train=True,
-                        data_statistics=None, filter_d=True)
+    root_dir = "NSDatasetV6/"
+    train_d = NSDataset(obj_name='019_pitcher_base', root_dir=root_dir, train_val_rate=0.9, all_sequence=True,
+                        train=True, data_statistics=None, filter_d=True)
     fig, ax = plt.subplots()
     one_data_points = get_all_property(train_d, 'before_angle')
     ax.hist(one_data_points, bins=10, label='angle of input state (degree)')

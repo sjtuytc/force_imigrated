@@ -128,4 +128,4 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
                 os.path.join(args.save, 'train.log')))
             with open(os.path.join(args.save, 'train.log'), 'a') as fp:
                 fp.write('{}\n'.format(training_summary))
-        return loss_meter.avg
+    return loss_meter.avg

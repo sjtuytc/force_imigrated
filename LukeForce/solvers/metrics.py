@@ -273,8 +273,12 @@ class StateMetric(BaseMetric):
         pos_loss = torch.abs(output_state_tensor[:, :3] - target_state_tensor[:, :3]).mean()
         base_pos_diff = torch.abs(input_state_tensor[:, :3] - target_state_tensor[:, :3]).mean()
 
-        ang_dis = cal_euler_diffrence(output_state_tensor[0][3:7].cpu(), target_state_tensor[0][3:7].cpu())
-        base_ang_dis = cal_euler_diffrence(input_state_tensor[0][3:7].cpu(), target_state_tensor[0][3:7].cpu())
+        ang_dis, base_ang_dis = 0, 0
+        for i in range(batch_size):
+            ang_dis += cal_euler_diffrence(output_state_tensor[i][3:7].cpu(), target_state_tensor[i][3:7].cpu())
+            base_ang_dis += cal_euler_diffrence(input_state_tensor[i][3:7].cpu(), target_state_tensor[i][3:7].cpu())
+        ang_dis = ang_dis / batch_size
+        base_ang_dis = base_ang_dis / batch_size
         if self.predict_speed:
             vel_dis = torch.abs(output_state_tensor[:, 7:10] - target_state_tensor[:, 7:10]).mean()
             omg_dis = torch.abs(output_state_tensor[:, 10:] - target_state_tensor[:, 10:]).mean()

@@ -174,16 +174,18 @@ class NormEnvState:
     def __init__(self, norm_or_denorm, position, rotation, position_mean, position_std, velocity_mean=None, velocity_std=None,
                  omega_mean=None, omega_std=None, velocity=None, omega=None, device=None):
         if velocity is None:
-            velocity = torch.tensor([0., 0., 0.], device=position.device, requires_grad=True)
+            self.use_vel = False
+            velocity = torch.tensor([0., 0., 0.], device=position.device, requires_grad=False)
         else:
+            self.use_vel = True
             velocity = norm_tensor(norm_or_denorm=norm_or_denorm, tensor=velocity, mean_tensor=velocity_mean, std_tensor=velocity_std)
         if omega is None:
-            omega = torch.tensor([0., 0., 0.], device=position.device, requires_grad=True)
+            omega = torch.tensor([0., 0., 0.], device=position.device, requires_grad=False)
         else:
             omega = norm_tensor(norm_or_denorm=norm_or_denorm, tensor=omega, mean_tensor=omega_mean, std_tensor=omega_std)
         assert len(position) == 3 and len(rotation) == 4 and len(velocity) == 3 and len(omega) == 3
         position = norm_tensor(norm_or_denorm=norm_or_denorm, tensor=position, mean_tensor=position_mean, std_tensor=position_std)
-        [position, rotation, velocity, omega] = [convert_to_tensor(x) for x in [position, rotation, velocity, omega]]
+        [position, rotation, velocity, omega] = [torch.Tensor(x) for x in [position, rotation, velocity, omega]]
         if not device:
             [position, rotation, velocity, omega] = [x.to(device) for x in [position, rotation, velocity, omega]]
 
@@ -199,13 +201,16 @@ class NormEnvState:
         assert type(self.rotation) == torch.Tensor
         assert type(self.velocity) == torch.Tensor
         assert type(self.omega) == torch.Tensor
-        tensor = torch.cat([self.position, self.rotation, self.velocity, self.omega], dim=-1)
-        assert tensor.shape[0] == NormEnvState.total_size
+        if self.use_vel:
+            tensor = torch.cat([self.position, self.rotation, self.velocity, self.omega], dim=-1)
+            assert tensor.shape[0] == NormEnvState.total_size
+        else:
+            tensor = torch.cat([self.position, self.rotation], dim=-1)
         return tensor
 
-    def clone(self):
-        return NormEnvState(norm_or_denorm=None, position=self.position.clone().detach(), rotation=self.rotation.clone().detach(), position_mean=None, position_std=None,
-                            velocity=self.velocity.clone().detach(), omega=self.omega.clone().detach())
+    # def clone(self):
+    #     return NormEnvState(norm_or_denorm=None, position=self.position.clone().detach(), rotation=self.rotation.clone().detach(), position_mean=None, position_std=None,
+    #                         velocity=self.velocity.clone().detach(), omega=self.omega.clone().detach())
 
     def __str__(self):
         return 'position:{},rotation:{},velocity:{},omega:{}'.format(self.position, self.rotation, self.velocity, self.omega)
