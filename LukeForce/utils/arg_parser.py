@@ -125,6 +125,8 @@ def parse_args(log_info=True, save_log=True):
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--use_val', action='store_true')
     parser.add_argument('--use_syn', action='store_true')
+    parser.add_argument('--no_env', action='store_true', help="don't use physical environment, this option is used for the neural "
+                                                              "simulator oracle.")
     parser.add_argument('--qualitative_size', default=500, type=int)
     parser.add_argument('--no-pretrain', action='store_false', dest='pretrain')
     parser.add_argument('--object_list', default=['072-a_toy_airplane'], nargs='+', type=str, help='options: ALL or ycb objects')

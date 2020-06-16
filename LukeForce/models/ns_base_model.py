@@ -6,18 +6,18 @@ import torch.nn.functional as F
 
 
 class MlpLayer(nn.Module):
-    def __init__(self, input_d, output_d, feature_num=256):
+    def __init__(self, input_d, output_d, feature_num=64, layer_norm=True):
         super(MlpLayer, self).__init__()
         self.fc1 = nn.Linear(input_d, feature_num)
         self.fc2 = nn.Linear(feature_num, feature_num)
         self.fc3 = nn.Linear(feature_num, feature_num)
         self.fc4 = nn.Linear(feature_num, feature_num)
         self.fc5 = nn.Linear(feature_num, feature_num)
-        self.bn1 = nn.BatchNorm1d(num_features=feature_num)
-        self.bn2 = nn.BatchNorm1d(num_features=feature_num)
-        self.bn3 = nn.BatchNorm1d(num_features=feature_num)
-        self.bn4 = nn.BatchNorm1d(num_features=feature_num)
-        self.bn5 = nn.BatchNorm1d(num_features=feature_num)
+        self.bn1 = nn.BatchNorm1d(num_features=feature_num) if layer_norm else nn.Identity()
+        self.bn2 = nn.BatchNorm1d(num_features=feature_num) if layer_norm else nn.Identity()
+        self.bn3 = nn.BatchNorm1d(num_features=feature_num) if layer_norm else nn.Identity()
+        self.bn4 = nn.BatchNorm1d(num_features=feature_num) if layer_norm else nn.Identity()
+        self.bn5 = nn.BatchNorm1d(num_features=feature_num) if layer_norm else nn.Identity()
         self.output_fc = nn.Linear(feature_num, output_d)
 
     def forward(self, x):
@@ -28,6 +28,29 @@ class MlpLayer(nn.Module):
         x = F.relu(self.bn5(self.fc5(x)))
         x = self.output_fc(x)
         return x
+
+
+class MLPNS(nn.Module):
+    def __init__(self, hidden_size=64, layer_norm=True):
+        super(MLPNS, self).__init__()
+        self.force_feature_size, self.state_feature_size, self.cp_feature_size = hidden_size, hidden_size, hidden_size
+        self.state_tensor_dim, self.force_tensor_dim, self.cp_tensor_dim = 14, 15, 15
+        self.state_encoder = MlpLayer(input_d=self.state_tensor_dim, output_d=self.state_feature_size, layer_norm=layer_norm)
+        self.force_encoder = MlpLayer(input_d=self.force_tensor_dim, output_d=self.force_feature_size, layer_norm=layer_norm)
+        self.cp_encoder = MlpLayer(input_d=self.cp_tensor_dim, output_d=self.cp_feature_size, layer_norm=layer_norm)
+        self.force_decoder = MlpLayer(input_d=self.state_feature_size + self.force_feature_size + self.cp_feature_size,
+                                      output_d=self.state_tensor_dim, layer_norm=layer_norm)
+
+    def forward(self, state_tensor, force_tensor, contact_points):
+        batch_size = force_tensor.shape[0]
+        force_tensor, contact_points, state_tensor = force_tensor.reshape(batch_size, -1), contact_points.reshape(batch_size, -1), \
+                                               state_tensor.reshape(batch_size, -1)
+        force_feature = self.force_encoder(force_tensor)
+        state_feature = self.state_encoder(state_tensor)
+        cp_feature = self.cp_encoder(contact_points)
+        fused_feature = torch.cat([force_feature, state_feature, cp_feature], dim=-1)
+        predict_state = self.force_decoder(fused_feature)
+        return predict_state
 
 
 def get_denorm_state_tensor(state_ten, stat):

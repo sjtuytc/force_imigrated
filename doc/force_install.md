@@ -53,7 +53,10 @@ python main.py --title original_training --sequence_length 10 --gpu-ids 0 --numb
 # train the full model with batch processing
 python main.py --title batch_joint_training_v3 --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchSeparateTowerModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 
-# train the full model with attention
+# train the joint oracle model.
+python main.py --title debug_joint_oracle --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model JointOracle --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 --no_env train
+
+# train the full model with attention, deprecating
 python main.py --title attention_v1 --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchCPHeatmapModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 
 # only predict contact point.

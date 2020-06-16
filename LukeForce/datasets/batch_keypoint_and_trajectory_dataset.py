@@ -97,7 +97,7 @@ class BatchDatasetWAugmentation(data.Dataset):
         self.final_obj2image = calculate_data_stats(self.all_possible_data)
         self.all_possible_data += self.get_possible_reverse_sequences()
 
-        if environment is None:
+        if environment is None and not args.no_env:
             print('initialize multiprocessing environments')
             environment = SubprocPhysicsEnv(args=args, object_paths=self.object_paths, context='spawn', nproc=11, nenvs=44)
             environment.reset()

@@ -10,6 +10,7 @@ from .no_model_gt_calculator import NoModelGTForceBaseline
 from .batch_cp_heatmap_model import BatchCPHeatmapModel
 from .ns_base_model import NSBaseModel
 from .ns_lstm_model import NSLSTMModel
+from .joint_oracle import JointOracle
 
 __all__ = [
     'ImageAndCPInputKPOutModel',
@@ -21,5 +22,6 @@ __all__ = [
     'NoModelGTForceBaseline',
     'BatchCPHeatmapModel',
     'NSBaseModel',
-    'NSLSTMModel'
+    'NSLSTMModel',
+    'JointOracle',
 ]

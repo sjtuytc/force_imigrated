@@ -67,7 +67,7 @@ class NSDataset(data.Dataset):
         split_ind = int(self.train_val_rate * len(all_data))
         final_d = all_data[:split_ind] if self.train else all_data[split_ind:]
         if not self.all_sequence:
-            self.data_len = len(all_data)
+            self.data_len = len(final_d)
         else:
             seq_idx = 0
             for idx, ele in enumerate(final_d):
@@ -121,7 +121,7 @@ class NSDataset(data.Dataset):
         pm, pstd, fm, fst, cpm, cpstd = sta['position_mean'], sta['position_std'], sta['force_mean'], sta['force_std'], \
                                         sta['cp_mean'], sta['cp_std']
         initial_position, initial_rotation = torch.Tensor(cur_d['initial_position']), torch.Tensor(cur_d['initial_rotation'])
-        norm_force, norm_cp, norm_cur_state_tensor, norm_state_seq, norm_tar_state_tensor = None, None, None, None, None
+        norm_force, norm_cp, norm_cur_state_tensor, norm_state_seq, norm_tar_state_tensor = None, None, None, [], None
         initial_env_state = NormEnvState(norm_or_denorm=True, position=initial_position, rotation=initial_rotation,
                                          position_mean=pm, position_std=pstd, velocity=None, velocity_mean=None,
                                          velocity_std=None, omega=None, omega_mean=None, omega_std=None)

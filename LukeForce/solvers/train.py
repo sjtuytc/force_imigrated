@@ -39,7 +39,8 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
         if args.gpu_ids != -1:  # if use gpu
             input_dict = dict_of_tensor_to_cuda(input_dict)
             target_dict = dict_of_tensor_to_cuda(target_dict)
-            target_dict['statistics'] = dict_of_tensor_to_cuda(target_dict['statistics'])
+            if 'statistics' in target_dict:
+                target_dict['statistics'] = dict_of_tensor_to_cuda(target_dict['statistics'])
             data_time_meter.update((time.time() - timestamp) / batch_size, batch_size)
 
             before_forward_pass_time = time.time()

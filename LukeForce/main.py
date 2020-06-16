@@ -19,24 +19,35 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 def get_dataset(args):
     print("Create training and validation dataset.")
-    collate_fn = None
     if args.ns:
         train_dataset = NSDataset(obj_name=args.obj_name, root_dir=args.ns_dataset_p, train_val_rate=0.9, all_sequence=args.lstm,
                                   train_num=args.train_num, train=True)
         val_dataset = NSDataset(obj_name=args.obj_name, root_dir=args.ns_dataset_p, train_val_rate=0.9, all_sequence=args.lstm,
                                 train_num=args.train_num, train=False, data_statistics=train_dataset.data_statistics)
-        collate_fn = train_dataset.collate_fn
+        if train_dataset.collate_fn is None:
+            train_loader = torch.utils.data.DataLoader(
+                train_dataset, batch_size=args.batch_size,
+                shuffle=True, num_workers=args.workers, pin_memory=False)
+            val_loader = torch.utils.data.DataLoader(
+                val_dataset, batch_size=args.batch_size,
+                shuffle=True, num_workers=args.workers, pin_memory=False)
+        else:
+            train_loader = torch.utils.data.DataLoader(
+                train_dataset, batch_size=args.batch_size,
+                shuffle=True, num_workers=args.workers, collate_fn=train_dataset.collate_fn, pin_memory=False)
+            val_loader = torch.utils.data.DataLoader(
+                val_dataset, batch_size=args.batch_size,
+                shuffle=True, num_workers=args.workers, collate_fn=train_dataset.collate_fn, pin_memory=False)
     else:
         train_dataset = args.dataset(args, environment=None, train=True)
         val_dataset = args.dataset(args, environment=train_dataset.environment, train=False)
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset, batch_size=args.batch_size,
+            shuffle=True, num_workers=args.workers, pin_memory=False)
+        val_loader = torch.utils.data.DataLoader(
+            val_dataset, batch_size=args.batch_size,
+            shuffle=True, num_workers=args.workers, pin_memory=False)
 
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.batch_size,
-        shuffle=True, num_workers=args.workers, collate_fn=collate_fn, pin_memory=False)
-    test_shuffle = True
-    val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=args.batch_size,
-        shuffle=test_shuffle, num_workers=args.workers, collate_fn=collate_fn, pin_memory=False)
 
     # get visualize environment
     if args.vis:
