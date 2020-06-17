@@ -54,7 +54,7 @@ python main.py --title original_training --sequence_length 10 --gpu-ids 0 --numb
 python main.py --title batch_joint_training_v3 --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchSeparateTowerModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 
 # train the joint oracle model.
-python main.py --title debug_joint_oracle --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model JointOracle --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 --no_env train
+python main.py --title residual_joint_oracle --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model JointOracle --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 --no_env train
 
 # train the full model with attention, deprecating
 python main.py --title attention_v1 --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchCPHeatmapModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
@@ -73,7 +73,7 @@ python main.py --title save_gt_force --batch-size 1 --workers 10 --gpu-ids 1 --n
 python main.py --title base_ns_model --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000  --save_frequency 30 --ns_dataset_p NSDatasetV5 --obj_name 019_pitcher_base train
 
 # residual change
-python main.py --title base_ns_model --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000 --ns_dataset_p NSDatasetV6 --obj_name 019_pitcher_base --residual train
+python main.py --title base_ns_model --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000 --ns_dataset_p NSDatasetV6 --obj_name 019_pitcher_base --residual --train_num 50 train
 
 # lstm model
 python main.py --title lstm_model --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSLSTMModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000 --ns_dataset_p NSDatasetV6 --obj_name 019_pitcher_base --residual --lstm --train_num 100 train
