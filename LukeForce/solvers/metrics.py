@@ -207,6 +207,8 @@ class ObjPositionMetric(BaseMetric):
 
 def cal_kp_dis(output_kp, target_kp):
     assert output_kp.shape == target_kp.shape
+    if target_kp.device != output_kp.device:
+        target_kp = target_kp.to(output_kp.device)
     output_kp = output_kp.clamp(-5000, 5000)
     mask = target_kp <= 1e-10
     not_masked = ~ (mask.sum(dim=-1) > 0)

@@ -41,7 +41,8 @@ class JointNS(BaseModel):
         self.object_feature_size = 512
         self.hidden_size = 512
         self.num_layers = 3
-        self.ns_layer = {obj_name: MLPNS(hidden_size=64, layer_norm=False) for obj_name in self.all_obj_names}
+        self.one_ns_layer = MLPNS(hidden_size=64, layer_norm=False)
+        # self.ns_layer = {obj_name: MLPNS(hidden_size=64, layer_norm=False) for obj_name in self.all_obj_names}
         self.input_feature_size = self.object_feature_size
         self.cp_feature_size = self.number_of_cp * 3
         self.image_embed = combine_block_w_do(512, 64, args.dropout_ratio)
@@ -155,9 +156,10 @@ class JointNS(BaseModel):
             input_lstm_cell = torch.cat([initial_frame_feature, current_frame_feature], dim=-1)
             (hn, cn) = self.lstm_decoder(input_lstm_cell, (hn, cn))
             force = self.forces_directions_decoder(hn)
-            cur_obj_ns_layer = self.ns_layer[object_name]
+            # cur_obj_ns_layer = self.ns_layer[object_name]
             # step neural force simulator
-            predicted_state_tensor = cur_obj_ns_layer(ns_state_tensor, force, contact_point_as_input)
+            # predicted_state_tensor = cur_obj_ns_layer(ns_state_tensor, force, contact_point_as_input)
+            predicted_state_tensor = self.one_ns_layer(ns_state_tensor, force, contact_point_as_input)
             ns_positions.append(predicted_state_tensor[0][:3])
             ns_rotations.append(predicted_state_tensor[0][3:7])
 
@@ -204,8 +206,8 @@ class JointNS(BaseModel):
 
     def cuda(self, device=None):
         self._apply(lambda t: t.cuda(device))
-        for one_obj in self.ns_layer:
-            self.ns_layer[one_obj].cuda()
+        # for one_obj in self.ns_layer:
+        #     self.ns_layer[one_obj].cuda()
         return self
 
     def to(self, *args, **kwargs):

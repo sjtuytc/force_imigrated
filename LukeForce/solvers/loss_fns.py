@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from utils.constants import DEFAULT_IMAGE_SIZE
+from IPython import embed
 
 __all__ = [
     'KeypointProjectionLoss',
@@ -133,9 +134,11 @@ class ForceRegressionLoss(BasicLossFunction):
 def cal_kp_loss(output_keypoints, target_keypoints, loss_fn, default_img_size=DEFAULT_IMAGE_SIZE):
     assert output_keypoints.shape == target_keypoints.shape
     if output_keypoints.device != default_img_size.device:
-        default_image_size =default_img_size.to(output_keypoints.device)
-        output_keypoints = output_keypoints / default_img_size
-        target_keypoints = target_keypoints / default_image_size
+        default_img_size = default_img_size.to(output_keypoints.device)
+    if target_keypoints.device != output_keypoints.device:
+        target_keypoints = target_keypoints.to(output_keypoints.device)
+    output_keypoints = output_keypoints / default_img_size
+    target_keypoints = target_keypoints / default_img_size
 
     output_keypoints = torch.clamp(output_keypoints, -5, 5)
     number_of_elements = target_keypoints.numel()
@@ -220,8 +223,8 @@ class JointNSProjectionLoss(BasicLossFunction):
         }
         self.weights_for_each_loss = {
             'loss1_state_grounding': 1.,
-            'loss2_force_grouding': 1.,
-            'loss_cp_prediction': 3.,
+            'loss2_force_grouding': 0.,
+            'loss_cp_prediction': 5.,
         }
 
     def forward(self, output, target):
