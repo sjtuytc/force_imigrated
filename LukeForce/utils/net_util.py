@@ -218,6 +218,7 @@ class EnvWHumanCpFiniteDiffFast(Function):
 
 
 class BatchCPGradientLayer(Function):
+    # Deprecating.
     @staticmethod
     def forward(ctx, environment, initial_state, forces_tensor, list_of_contact_points):
         assert len(forces_tensor.shape) == 1, 'The force should be flattened'

@@ -12,12 +12,10 @@ from utils.environment_util import NpEnvState, NpForceValOnly, build_np_env_stat
 from utils.constants import OBJECT_TO_SCALE, CONTACT_POINT_MASK_VALUE, GRAVITY_VALUE
 
 
-# physics environment utilizing numpy.
 class NpPhysicsEnv(BaseBulletEnv):
-
+    # Physics environment based on Numpy to accellerate computing.
     def __init__(self, render, object_name, object_path, gravity, debug, number_of_cp, fps, force_multiplier,
-                 force_h, state_h, qualitative_size, workers=0, gpu_ids=None):
-        gpu_ids = -1  #  we forbid using GPU when running a single phy env, this is faster.
+                 force_h, state_h, workers=0, ):
         self.render, self.object_path, self.object_name, self.gravity, self.debug, self.number_of_cp, \
             self.fps, self.force_multiplier, self.force_h, self.state_h = \
             render, object_path, object_name, gravity, debug, number_of_cp, fps, force_multiplier, force_h, \
@@ -33,7 +31,6 @@ class NpPhysicsEnv(BaseBulletEnv):
         self.number_of_steps_per_image = int(1 / self.fps / self.time_step_length)
         self.cameraEyePosition = np.array([0, 0, 0])
         self.camera_gaze_direction = np.array([0, 0, 1])
-        self.object_path = object_path
         self.scale = OBJECT_TO_SCALE[object_name]
         self.sleep_time = 1
         self.terminated = 0
@@ -119,7 +116,7 @@ class NpPhysicsEnv(BaseBulletEnv):
         ornObj = quaternion_normal2bullet(ornObj)
         self._p.resetBasePositionAndOrientation(bodyUniqueId=bodyUniqueId, posObj=posObj, ornObj=ornObj)
 
-    def update_object_transformations(self, object_state, object_num, hand_pose=None):
+    def update_object_transformations(self, object_state, object_num,):
         if object_num is None:
             object_num = self.object_of_interest_id
         rotation = object_state.rotation

@@ -78,118 +78,6 @@ class TrajectoryDistanceMetric(BaseMetric):
         return 'TrajectoryDistanceMetric:{}'.format({k: x.mean() for k, x in self.average().items()}).replace('\n', '; ')
 
 
-class ObjRotationMetric(BaseMetric):
-
-    def __init__(self, args):
-        super(ObjRotationMetric, self).__init__()
-        self.object_list = args.object_list
-        self.sequence_length = args.sequence_length
-        self.meter = {obj: AverageMeter() for obj in self.object_list}
-        self.meter['overall'] = AverageMeter()
-        self.distance_function = get_quaternion_distance
-
-    def average(self):
-        return {k: self.meter[k].avg for k in self.meter}
-
-    def val(self):
-        return {k: self.meter[k].val for k in self.meter}
-
-    def record_output(self, output, target):
-        output_rotation = output['rotation']
-        target_rotation = target['rotation']
-        object_name = target['object_name']
-        assert len(object_name) == 1
-        object_name = object_name[0]
-
-        assert output_rotation.shape == target_rotation.shape
-        batch_size = output_rotation.shape[0]
-
-        dist = self.distance_function(output_rotation, target_rotation).mean()
-
-        self.meter[object_name].update(dist.detach(), batch_size)
-        self.meter['overall'].update(dist.detach(), batch_size)
-
-    def report(self):
-        return 'ObjRotationMetric:{}'.format(self.meter['overall'].avg).replace('\n', '; ')
-
-
-def calc_L2_dist(output, target):
-    last_dim = output.shape[-1]
-    output = output.view(-1, last_dim)
-    target = target.view(-1, last_dim)
-    return torch.nn.PairwiseDistance()(output, target).mean()
-
-
-class ObjPositionMetric(BaseMetric):
-
-    def __init__(self, args):
-        super(ObjPositionMetric, self).__init__()
-        self.object_list = args.object_list
-        self.sequence_length = args.sequence_length
-        self.meter = {obj: AverageMeter() for obj in self.object_list}
-        self.meter['overall'] = AverageMeter()
-        self.distance_function = calc_L2_dist
-
-    def average(self):
-        return {k: self.meter[k].avg for k in self.meter}
-
-    def val(self):
-        return {k: self.meter[k].val for k in self.meter}
-
-    def record_output(self, output, target):
-        output_position = output['position']
-        target_position = target['position']
-        object_name = target['object_name']
-        assert len(object_name) == 1
-        object_name = object_name[0]
-
-        assert output_position.shape == target_position.shape
-        batch_size = output_position.shape[0]
-
-        dist = self.distance_function(output_position, target_position)
-
-        self.meter[object_name].update(dist.detach(), batch_size)
-        self.meter['overall'].update(dist.detach(), batch_size)
-
-    def report(self):
-        return 'ObjPositionMetric:{}'.format(self.meter['overall'].avg).replace('\n', '; ')
-
-
-class ObjKeypointMetric(BaseMetric):
-
-    def __init__(self, args):
-        super(ObjKeypointMetric, self).__init__()
-        self.object_list = args.object_list
-        self.sequence_length = args.sequence_length
-        self.meter = {obj: AverageMeter() for obj in self.object_list}
-        self.meter['overall'] = AverageMeter()
-
-    def average(self):
-        return {k: self.meter[k].avg for k in self.meter}
-
-    def val(self):
-        return {k: self.meter[k].val for k in self.meter}
-
-    def record_output(self, output, target):
-        output_keypoints = output['keypoints']
-        target_keypoints = target['keypoints']
-        assert output_keypoints.shape == target_keypoints.shape
-        output_keypoints = output_keypoints.clamp(-5000, 5000)
-        mask = target_keypoints <= 1e-10
-        not_masked = ~ (mask.sum(dim=-1) > 0)
-        diff = torch.abs(output_keypoints[not_masked] - target_keypoints[not_masked]).norm(dim=-1)
-        keypoint_loss = diff.mean()
-        batch_size = 1
-        object_name = target['object_name']
-        assert len(object_name) == 1
-        object_name = object_name[0]
-        self.meter[object_name].update(keypoint_loss, batch_size)
-        self.meter['overall'].update(keypoint_loss, batch_size)
-
-    def report(self):
-        return 'ObjKeypointMetric:{}'.format((self.meter['overall'].avg)).replace('\n', '; ')
-
-
 class CPMetric(BaseMetric):
 
     def __init__(self, args):
@@ -240,6 +128,210 @@ class CPMetric(BaseMetric):
         return 'CPMetric:{}'.format((self.meter['average_cp'].avg)).replace('\n', '; ')
 
 
+class ObjRotationMetric(BaseMetric):
+
+    def __init__(self, args):
+        super(ObjRotationMetric, self).__init__()
+        self.object_list = args.object_list
+        self.sequence_length = args.sequence_length
+        self.meter = {obj: AverageMeter() for obj in self.object_list}
+        self.meter['overall'] = AverageMeter()
+        self.distance_function = get_quaternion_distance
+
+    def average(self):
+        return {k: self.meter[k].avg for k in self.meter}
+
+    def val(self):
+        return {k: self.meter[k].val for k in self.meter}
+
+    def record_output(self, output, target):
+        output_rotation = output['rotation']
+        target_rotation = target['rotation']
+        object_name = target['object_name']
+        assert len(object_name) == 1
+        object_name = object_name[0]
+
+        assert output_rotation.shape == target_rotation.shape
+        batch_size = output_rotation.shape[0]
+
+        dist = self.distance_function(output_rotation, target_rotation).mean()
+
+        self.meter[object_name].update(dist.detach(), batch_size)
+        self.meter['overall'].update(dist.detach(), batch_size)
+
+    def report(self):
+        return 'ObjRotationMetric:{}'.format(self.meter['overall'].avg).replace('\n', '; ')
+
+
+def l2_dist(output, target):
+    last_dim = output.shape[-1]
+    output = output.view(-1, last_dim)
+    target = target.view(-1, last_dim)
+    return torch.nn.PairwiseDistance()(output, target).mean()
+
+
+class ObjPositionMetric(BaseMetric):
+
+    def __init__(self, args):
+        super(ObjPositionMetric, self).__init__()
+        self.object_list = args.object_list
+        self.sequence_length = args.sequence_length
+        self.meter = {obj: AverageMeter() for obj in self.object_list}
+        self.meter['overall'] = AverageMeter()
+        self.distance_function = l2_dist
+
+    def average(self):
+        return {k: self.meter[k].avg for k in self.meter}
+
+    def val(self):
+        return {k: self.meter[k].val for k in self.meter}
+
+    def record_output(self, output, target):
+        output_position = output['position']
+        target_position = target['position']
+        object_name = target['object_name']
+        assert len(object_name) == 1
+        object_name = object_name[0]
+
+        assert output_position.shape == target_position.shape
+        batch_size = output_position.shape[0]
+
+        dist = self.distance_function(output_position, target_position)
+
+        self.meter[object_name].update(dist.detach(), batch_size)
+        self.meter['overall'].update(dist.detach(), batch_size)
+
+    def report(self):
+        return 'ObjPositionMetric:{}'.format(self.meter['overall'].avg).replace('\n', '; ')
+
+
+def cal_kp_dis(output_kp, target_kp):
+    assert output_kp.shape == target_kp.shape
+    output_kp = output_kp.clamp(-5000, 5000)
+    mask = target_kp <= 1e-10
+    not_masked = ~ (mask.sum(dim=-1) > 0)
+    diff = torch.abs(output_kp[not_masked] - target_kp[not_masked]).norm(dim=-1)
+    keypoint_loss = diff.mean()
+    return keypoint_loss
+
+
+class ObjKeypointMetric(BaseMetric):
+
+    def __init__(self, args):
+        super(ObjKeypointMetric, self).__init__()
+        self.object_list = args.object_list
+        self.sequence_length = args.sequence_length
+        self.meter = {obj: AverageMeter() for obj in self.object_list}
+        self.meter['overall'] = AverageMeter()
+
+    def average(self):
+        return {k: self.meter[k].avg for k in self.meter}
+
+    def val(self):
+        return {k: self.meter[k].val for k in self.meter}
+
+    def record_output(self, output, target):
+        output_keypoints = output['keypoints']
+        target_keypoints = target['keypoints']
+        keypoint_loss = cal_kp_dis(output_kp=output_keypoints, target_kp=target_keypoints)
+        batch_size = 1
+        object_name = target['object_name']
+        assert len(object_name) == 1
+        object_name = object_name[0]
+        self.meter[object_name].update(keypoint_loss, batch_size)
+        self.meter['overall'].update(keypoint_loss, batch_size)
+
+    def report(self):
+        return 'ObjKeypointMetric:{}'.format((self.meter['overall'].avg)).replace('\n', '; ')
+
+
+class StateGroundingMetric(BaseMetric):
+    def __init__(self, args):
+        super(StateGroundingMetric, self).__init__()
+        self.object_list = args.object_list
+        self.sequence_length = args.sequence_length
+        self.meter = {obj: AverageMeter() for obj in self.object_list}
+        self.meter['overall'] = AverageMeter()
+
+    def average(self):
+        return {k: self.meter[k].avg for k in self.meter}
+
+    def val(self):
+        return {k: self.meter[k].val for k in self.meter}
+
+    def record_output(self, output, target):
+        ns_kp = output['ns_keypoints']
+        gt_kp = target['keypoints']
+        keypoint_loss = cal_kp_dis(output_kp=ns_kp, target_kp=gt_kp)
+        batch_size = 1
+        object_name = target['object_name']
+        assert len(object_name) == 1
+        object_name = object_name[0]
+        self.meter[object_name].update(keypoint_loss, batch_size)
+        self.meter['overall'].update(keypoint_loss, batch_size)
+
+    def report(self):
+        return 'StateGroundingMetric:{}'.format((self.meter['overall'].avg)).replace('\n', '; ')
+
+
+class ForceGroundingMetric(BaseMetric):
+    def __init__(self, args):
+        super(ForceGroundingMetric, self).__init__()
+        self.object_list = args.object_list
+        self.sequence_length = args.sequence_length
+        self.meter = {obj: AverageMeter() for obj in self.object_list}
+        self.meter['overall'] = AverageMeter()
+
+    def average(self):
+        return {k: self.meter[k].avg for k in self.meter}
+
+    def val(self):
+        return {k: self.meter[k].val for k in self.meter}
+
+    def record_output(self, output, target):
+        ns_kp = output['ns_keypoints']
+        phy_kp = output['phy_keypoints']
+        keypoint_loss = cal_kp_dis(output_kp=ns_kp, target_kp=phy_kp)
+        batch_size = 1
+        object_name = target['object_name']
+        assert len(object_name) == 1
+        object_name = object_name[0]
+        self.meter[object_name].update(keypoint_loss, batch_size)
+        self.meter['overall'].update(keypoint_loss, batch_size)
+
+    def report(self):
+        return 'ForceGroundingMetric:{}'.format((self.meter['overall'].avg)).replace('\n', '; ')
+
+
+class ForcePredictionMetric(BaseMetric):
+    def __init__(self, args):
+        super(ForcePredictionMetric, self).__init__()
+        self.object_list = args.object_list
+        self.sequence_length = args.sequence_length
+        self.meter = {obj: AverageMeter() for obj in self.object_list}
+        self.meter['overall'] = AverageMeter()
+
+    def average(self):
+        return {k: self.meter[k].avg for k in self.meter}
+
+    def val(self):
+        return {k: self.meter[k].val for k in self.meter}
+
+    def record_output(self, output, target):
+        gt_kp = target['keypoints']
+        phy_kp = output['phy_keypoints']
+        keypoint_loss = cal_kp_dis(output_kp=phy_kp, target_kp=gt_kp)
+        batch_size = 1
+        object_name = target['object_name']
+        assert len(object_name) == 1
+        object_name = object_name[0]
+        self.meter[object_name].update(keypoint_loss, batch_size)
+        self.meter['overall'].update(keypoint_loss, batch_size)
+
+    def report(self):
+        return 'ForcePredictionMetric:{}'.format((self.meter['overall'].avg)).replace('\n', '; ')
+
+
 def cal_euler_diffrence(quat_a, quat_b):
     euler_a, euler_b = quaternion_to_euler_angle(quat_a), quaternion_to_euler_angle(quat_b)
     diff_result = torch.abs(torch.Tensor(euler_a) - torch.Tensor(euler_b)).mean()
@@ -247,6 +339,7 @@ def cal_euler_diffrence(quat_a, quat_b):
 
 
 class StateMetric(BaseMetric):
+    # deprecating, used in old ns version.
     def __init__(self, args):
         super(StateMetric, self).__init__()
         self.object_list = args.object_list

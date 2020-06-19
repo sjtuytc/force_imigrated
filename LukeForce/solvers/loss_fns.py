@@ -7,7 +7,8 @@ __all__ = [
     'KPProjectionCPPredictionLoss',
     'CPPredictionLoss',
     'ForceRegressionLoss',
-    'StateEstimationLoss'
+    'StateEstimationLoss',
+    'JointNSProjectionLoss',
 ]
 
 variables = locals()
@@ -37,6 +38,7 @@ class BasicLossFunction(nn.Module):
 
 
 class StateEstimationLoss(BasicLossFunction):
+    # deprecating
     def __init__(self, args):
         super(BasicLossFunction, self).__init__()
         self.loss_fn = nn.MSELoss()
@@ -128,6 +130,54 @@ class ForceRegressionLoss(BasicLossFunction):
         return total_loss
 
 
+def cal_kp_loss(output_keypoints, target_keypoints, loss_fn, default_img_size=DEFAULT_IMAGE_SIZE):
+    assert output_keypoints.shape == target_keypoints.shape
+    if output_keypoints.device != default_img_size.device:
+        default_image_size =default_img_size.to(output_keypoints.device)
+        output_keypoints = output_keypoints / default_img_size
+        target_keypoints = target_keypoints / default_image_size
+
+    output_keypoints = torch.clamp(output_keypoints, -5, 5)
+    number_of_elements = target_keypoints.numel()
+    not_masked_target = target_keypoints > 1e-10
+    number_of_unmasked_elements = not_masked_target.sum().item()
+
+    if number_of_unmasked_elements > 0:
+        keypoint_projection = loss_fn(output_keypoints[not_masked_target], target_keypoints[not_masked_target])
+        keypoint_projection = keypoint_projection * float(number_of_unmasked_elements) / number_of_elements  # Normalization
+    else:  # Just a dummy thing
+        keypoint_projection = torch.tensor(0.0, requires_grad=True, device=output_keypoints.device)
+    return keypoint_projection
+
+
+class KeypointProjectionLoss(BasicLossFunction):
+    def __init__(self, args):
+        super(KeypointProjectionLoss, self).__init__()
+        self.loss_keypoint_loss = nn.SmoothL1Loss()
+        self._local_loss_dict = {
+            'keypoint_projection': None,
+        }
+        self.weights_for_each_loss = {
+            'keypoint_projection': 1.,
+        }
+        self.default_image_size = DEFAULT_IMAGE_SIZE
+
+    def forward(self, output, target):
+        output_keypoints = output['keypoints']
+        target_keypoints = target['keypoints']
+        kp_loss = cal_kp_loss(output_keypoints=output_keypoints, target_keypoints=target_keypoints,
+                              loss_fn=self.loss_keypoint_loss, default_img_size=self.default_image_size)
+        loss_dict = {
+            'keypoint_projection': kp_loss,
+        }
+
+        # summarize losses
+        batch_size = output_keypoints.shape[0]
+        total_loss = self.calc_and_update_total_loss(loss_dict, batch_size)
+
+        return total_loss
+
+
 class KPProjectionCPPredictionLoss(BasicLossFunction):
     def __init__(self, args):
         super(KPProjectionCPPredictionLoss, self).__init__()
@@ -157,48 +207,40 @@ class KPProjectionCPPredictionLoss(BasicLossFunction):
         return total_loss
 
 
-class KeypointProjectionLoss(BasicLossFunction):
+class JointNSProjectionLoss(BasicLossFunction):
     def __init__(self, args):
-        super(KeypointProjectionLoss, self).__init__()
+        super(JointNSProjectionLoss, self).__init__()
         self.loss_keypoint_loss = nn.SmoothL1Loss()
+        self.default_image_size = DEFAULT_IMAGE_SIZE
+        self.loss_cp_prediction = CPPredictionLoss(args)
         self._local_loss_dict = {
-            'keypoint_projection': None,
+            'loss1_state_grounding': None,
+            'loss2_force_grouding': None,
+            'loss_cp_prediction': None,
         }
         self.weights_for_each_loss = {
-            'keypoint_projection': 1.,
+            'loss1_state_grounding': 1.,
+            'loss2_force_grouding': 1.,
+            'loss_cp_prediction': 3.,
         }
-        self.default_image_size = DEFAULT_IMAGE_SIZE
-
-    def clamp_output(self, output):
-        return torch.clamp(output, -5, 5)
 
     def forward(self, output, target):
-        output_keypoints = output['keypoints']
-        target_keypoints = target['keypoints']
-        assert output_keypoints.shape == target_keypoints.shape
-        if output_keypoints.device != self.default_image_size.device:
-            self.default_image_size = self.default_image_size.to(output_keypoints.device)
-        output_keypoints = output_keypoints / self.default_image_size
-        target_keypoints = target_keypoints / self.default_image_size
-
-        output_keypoints = self.clamp_output(output_keypoints)
-
-        number_of_elements = target_keypoints.numel()
-        not_masked_target = target_keypoints > 1e-10
-        number_of_unmasked_elements = not_masked_target.sum().item()
-
-        if number_of_unmasked_elements > 0:
-            keypoint_projection = self.loss_keypoint_loss(output_keypoints[not_masked_target], target_keypoints[not_masked_target])
-            keypoint_projection = keypoint_projection * float(number_of_unmasked_elements) / number_of_elements  # Normalization
-        else:  # Just a dummy thing
-            keypoint_projection = torch.tensor(0.0, requires_grad=True, device=output_keypoints.device)
-
+        loss_cp_prediction_value = self.loss_cp_prediction(output, target)
+        gt_kps = target['keypoints']
+        phy_kps = output['phy_keypoints']
+        ns_kps = output['ns_keypoints']
+        loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.loss_keypoint_loss,
+                                                  default_img_size=self.default_image_size)
+        loss2_force_grounding_value = cal_kp_loss(ns_kps, phy_kps, self.loss_keypoint_loss,
+                                                  default_img_size=self.default_image_size)
         loss_dict = {
-            'keypoint_projection': keypoint_projection,
+            'loss1_state_grounding': loss1_state_grounding_value,
+            'loss2_force_grouding': loss2_force_grounding_value,
+            'loss_cp_prediction': loss_cp_prediction_value,
         }
 
-        batch_size = output_keypoints.shape[0]
-
+        # summarize losses
+        batch_size = output['contact_points'].shape[0]
         total_loss = self.calc_and_update_total_loss(loss_dict, batch_size)
 
         return total_loss

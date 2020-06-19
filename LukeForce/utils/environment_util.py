@@ -35,6 +35,9 @@ def build_np_env_state_from_dict(env_state_dict):
 
 
 class NpEnvState:
+    '''
+    Use numpy to accellerate gradient computation, deprecating now.
+    '''
     size = [3, 4, 3, 3, 1]
     total_size = sum(size)
     OBJECT_TYPE_INDEX = total_size - 1
@@ -88,6 +91,62 @@ class NpEnvState:
         assert 0 <= tensor[EnvState.OBJECT_TYPE_INDEX] < len(REGISTERED_OBJECTS)
         object_name = convert_tensor_to_obj_name(tensor[EnvState.OBJECT_TYPE_INDEX])
         return NpEnvState(object_name, position, rotation, velocity, omega)
+
+
+def nograd_envstate_from_tensor(object_name, env_tensor):
+    return NoGradEnvState(object_name=object_name, position=env_tensor[:3], rotation=env_tensor[3:7],
+                          velocity=env_tensor[7:10], omega=env_tensor[10:13], device=env_tensor.device)
+
+
+class NoGradEnvState:
+    size = [3, 4, 3, 3, 1]
+    total_size = sum(size)
+    OBJECT_TYPE_INDEX = total_size - 1
+
+    def __init__(self, object_name, position, rotation, velocity=None, omega=None, device=None):
+        if velocity is None:
+            velocity = torch.tensor([0., 0., 0.], device=position.device, )
+        if omega is None:
+            omega = torch.tensor([0., 0., 0.], device=position.device,)
+
+        assert len(position) == 3 and len(rotation) == 4 and len(velocity) == 3 and len(omega) == 3
+
+        [position, rotation, velocity, omega] = [convert_to_tensor(x, require_grad=False)
+                                                 for x in [position, rotation, velocity, omega]]
+        if device is not None:
+            [position, rotation, velocity, omega] = [x.to(device) for x in [position, rotation, velocity, omega]]
+
+        rotation = F.normalize(rotation.unsqueeze(0)).squeeze(0)
+
+        self.position = position
+        self.rotation = rotation
+        self.velocity = velocity
+        self.omega = omega
+        self.object_name = object_name
+
+    def toTensorCoverName(self):
+        assert type(self.position) == torch.Tensor
+        assert type(self.rotation) == torch.Tensor
+        assert type(self.velocity) == torch.Tensor
+        assert type(self.omega) == torch.Tensor
+        assert self.object_name in REGISTERED_OBJECTS
+        object_name_tensor = torch.Tensor([-1.0]).float().to(self.position.device)
+        tensor = torch.cat([self.position, self.rotation, self.velocity, self.omega, object_name_tensor], dim=-1)
+        assert tensor.shape[0] == EnvState.total_size
+        return tensor
+
+    def __str__(self):
+        return 'object_name:{},position:{},rotation:{},velocity:{},omega:{}'.format(self.object_name, self.position, self.rotation, self.velocity, self.omega)
+
+    def cuda_(self):
+        [self.position, self.rotation, self.velocity, self.omega] = [x.cuda() for x in [self.position, self.rotation, self.velocity, self.omega]]
+
+    def cpu_(self):
+        [self.position, self.rotation, self.velocity, self.omega] = [x.cpu() for x in [self.position, self.rotation, self.velocity, self.omega]]
+
+    def to_dict(self):
+        return {'object_name': self.object_name, 'position': self.position.tolist(), 'rotation': self.rotation.tolist(),
+                'velocity': self.velocity.tolist(), 'omega': self.omega.tolist()}
 
 
 class EnvState:
@@ -289,10 +348,11 @@ class ForceValOnly:
         return self
 
 
-def convert_to_tensor(x):
+def convert_to_tensor(x, require_grad=True):
     if type(x) == tuple or type(x) == list:
         result = torch.Tensor(x)
-        result.requires_grad = True
+        if require_grad:
+            result.requires_grad = True
         return result
     elif type(x) == torch.Tensor:
         return x

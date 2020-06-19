@@ -7,22 +7,22 @@ from utils.net_util import input_embedding_net, combine_block_w_do
 
 from torchvision.models.resnet import resnet18
 from solvers import metrics
-from utils.environment_util import EnvState
+from utils.environment_util import NoGradEnvState, nograd_envstate_from_tensor
 from utils.projection_utils import get_keypoint_projection, get_all_objects_keypoint_tensors
 from IPython import embed
 
 
 # a model supports batch inference parallelly.
-class JointOracle(BaseModel):
+class JointNS(BaseModel):
     metric = [
-        metrics.ObjRotationMetric,
-        metrics.ObjPositionMetric,
-        metrics.ObjKeypointMetric,
         metrics.CPMetric,
+        metrics.StateGroundingMetric,
+        metrics.ForceGroundingMetric,
+        metrics.ForcePredictionMetric,
     ]
 
     def __init__(self, args):
-        super(JointOracle, self).__init__(args)
+        super(JointNS, self).__init__(args)
 
         self.loss_function = args.loss
         self.relu = nn.LeakyReLU()
@@ -30,20 +30,20 @@ class JointOracle(BaseModel):
         self.environment = args.instance_environment
         self.sequence_length = args.sequence_length
         self.gpu_ids = args.gpu_ids
+        self.all_obj_names = args.object_list
+        self.force_grounding = not args.no_env
 
         self.feature_extractor = resnet18(pretrained=args.pretrain)
         del self.feature_extractor.fc
-
         self.feature_extractor.eval()
 
         self.image_feature_size = 512
         self.object_feature_size = 512
         self.hidden_size = 512
         self.num_layers = 3
-        self.environment_layer = MLPNS(hidden_size=64, layer_norm=False)
+        self.ns_layer = {obj_name: MLPNS(hidden_size=64, layer_norm=False) for obj_name in self.all_obj_names}
         self.input_feature_size = self.object_feature_size
         self.cp_feature_size = self.number_of_cp * 3
-
         self.image_embed = combine_block_w_do(512, 64, args.dropout_ratio)
         self.contact_point_image_embed = combine_block_w_do(512, 64, args.dropout_ratio)
 
@@ -51,7 +51,7 @@ class JointOracle(BaseModel):
         self.input_object_embed = input_embedding_net(input_object_embed_size.long().tolist(), dropout=args.dropout_ratio)
         self.contact_point_input_object_embed = input_embedding_net(input_object_embed_size.long().tolist(), dropout=args.dropout_ratio)
 
-        state_embed_size = torch.Tensor([EnvState.total_size + self.cp_feature_size, 100, self.object_feature_size])
+        state_embed_size = torch.Tensor([NoGradEnvState.total_size + self.cp_feature_size, 100, self.object_feature_size])
         self.state_embed = input_embedding_net(state_embed_size.long().tolist(), dropout=args.dropout_ratio)
 
         self.lstm_encoder = nn.LSTM(input_size=self.hidden_size + 64 * 7 * 7, hidden_size=self.hidden_size,
@@ -141,50 +141,57 @@ class JointOracle(BaseModel):
 
         hn = last_hidden
         cn = last_cell
-        env_state = EnvState(object_name=object_name, rotation=initial_rotation[0], position=initial_position[0],
-                             velocity=None, omega=None)
-        env_state_tensor = env_state.toTensor().unsqueeze(0)
-        resulting_position = []
-        resulting_rotation = []
+        initial_state = NoGradEnvState(object_name=object_name, rotation=initial_rotation[0], position=initial_position[0],
+                                        velocity=None, omega=None)
+        initial_state_tensor = initial_state.toTensorCoverName().unsqueeze(0)
+        ns_state_tensor = initial_state_tensor.clone()
+        phy_positions, ns_positions, phy_rotations, ns_rotations = [], [], [], []
 
         for seq_ind in range(self.sequence_length - 1):
-            prev_location = env_state.toTensorCoverName().unsqueeze(0)
             contact_point_as_input = contact_points_prediction.view(1, 3 * 5)
-
-            prev_state_and_cp = torch.cat([prev_location, contact_point_as_input], dim=-1)
-            prev_state_embedded = self.state_embed(prev_state_and_cp)
-            next_state_embedded = embedded_sequence_force[:, seq_ind + 1]
-            input_lstm_cell = torch.cat([prev_state_embedded, next_state_embedded], dim=-1)
-
+            initial_state_and_cp = torch.cat([initial_state_tensor, contact_point_as_input], dim=-1)
+            initial_frame_feature = self.state_embed(initial_state_and_cp)
+            current_frame_feature = embedded_sequence_force[:, seq_ind + 1]
+            input_lstm_cell = torch.cat([initial_frame_feature, current_frame_feature], dim=-1)
             (hn, cn) = self.lstm_decoder(input_lstm_cell, (hn, cn))
             force = self.forces_directions_decoder(hn)
-            assert force.shape[0] == 1
-            force = force.squeeze(0)
-            assert force.shape[0] == (self.number_of_cp * 3)
-            # embed()
-            env_state_tensor = self.environment_layer(env_state_tensor, force.unsqueeze(0), contact_point_as_input)
-            # env_state = EnvState.fromTensor(next_env_state_tensor.squeeze())
-            # resulting_position.append(env_state.position)
-            # resulting_rotation.append(env_state.rotation)
-            assert len(env_state_tensor) == 1
-            resulting_position.append(env_state_tensor[0][:3])
-            resulting_rotation.append(env_state_tensor[0][3:7])
+            cur_obj_ns_layer = self.ns_layer[object_name]
+            # step neural force simulator
+            predicted_state_tensor = cur_obj_ns_layer(ns_state_tensor, force, contact_point_as_input)
+            ns_positions.append(predicted_state_tensor[0][:3])
+            ns_rotations.append(predicted_state_tensor[0][3:7])
 
-        resulting_position = torch.stack(resulting_position, dim=0)
-        resulting_rotation = torch.stack(resulting_rotation, dim=0)
-        resulting_position = resulting_position.unsqueeze(0)  # adding batchsize back because we need it in the loss
-        resulting_rotation = resulting_rotation.unsqueeze(0)  # adding batchsize back because we need it in the loss
+            # step physical simulator
+            cur_state = nograd_envstate_from_tensor(object_name=object_name, env_tensor=ns_state_tensor[0])
+            phy_env_state, _, _ = \
+                self.environment.init_location_and_apply_force(forces=force[0].reshape(5, -1), initial_state=cur_state,
+                                                               list_of_contact_points=contact_point_as_input[0].reshape(5, -1),
+                                                               no_grad=True)
+            phy_state_tensor = phy_env_state.toTensorCoverName()
+            phy_positions.append(phy_state_tensor[:3])
+            phy_rotations.append(phy_state_tensor[3:7])
 
-        all_keypoints = get_keypoint_projection(object_name, resulting_position, resulting_rotation,
-                                                self.all_objects_keypoint_tensor[object_name])
-        all_keypoints = all_keypoints.unsqueeze(0)  # adding batchsize back because we need it in the loss
+            # update to next state
+            ns_state_tensor = predicted_state_tensor
+
+        phy_positions = torch.stack(phy_positions).unsqueeze(0)
+        phy_rotations = torch.stack(phy_rotations).unsqueeze(0)
+        phy_kps = get_keypoint_projection(object_name, phy_positions, phy_rotations,
+                                          self.all_objects_keypoint_tensor[object_name]).unsqueeze(0)
+        ns_positions = torch.stack(ns_positions).unsqueeze(0)
+        ns_rotations = torch.stack(ns_rotations).unsqueeze(0)
+        ns_kps = get_keypoint_projection(object_name, ns_positions, ns_rotations,
+                                         self.all_objects_keypoint_tensor[object_name]).unsqueeze(0)
 
         contact_points_prediction = contact_points_prediction.unsqueeze(1).repeat(1, seq_len, 1, 1)
 
         output = {
-            'keypoints': all_keypoints,
-            'rotation': resulting_rotation,
-            'position': resulting_position,
+            'phy_position': phy_positions,
+            'phy_rotation': phy_rotations,
+            'phy_keypoints': phy_kps,
+            'ns_position': ns_positions,
+            'ns_rotation': ns_rotations,
+            'ns_keypoints': ns_kps,
             'contact_points': contact_points_prediction,
         }
 
@@ -194,3 +201,12 @@ class JointOracle(BaseModel):
 
     def optimizer(self):
         return torch.optim.Adam(self.parameters(), lr=self.base_lr)
+
+    def cuda(self, device=None):
+        self._apply(lambda t: t.cuda(device))
+        for one_obj in self.ns_layer:
+            self.ns_layer[one_obj].cuda()
+        return self
+
+    def to(self, *args, **kwargs):
+        raise NotImplementedError("Please use .cuda() instead.")

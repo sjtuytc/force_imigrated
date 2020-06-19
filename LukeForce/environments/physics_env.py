@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from utils.obj_util import obtain_all_vertices_from_obj
 from utils.quaternion_util import quaternion_to_rotation_matrix
-from utils.environment_util import EnvState, ForceValOnly, build_env_state_from_dict
+from utils.environment_util import EnvState, ForceValOnly, NoGradEnvState, build_env_state_from_dict
 from utils.constants import OBJECT_TO_SCALE, CONTACT_POINT_MASK_VALUE, GRAVITY_VALUE
 
 
@@ -176,16 +176,21 @@ class PhysicsEnv(BaseBulletEnv):
     def get_rotation_mat(self, state):
         return quaternion_to_rotation_matrix(state.rotation.view(1, 4)).squeeze(0)
 
-    def get_current_state(self, object_num=None):
+    def get_current_state(self, object_num=None, no_grad=False):
         if object_num is None:
             object_num = self.object_of_interest_id
         objectPos, objectOr = self._p.getBasePositionAndOrientation(object_num)
         objectOr = quaternion_bullet2normal(objectOr)
         velocity, omega = self._p.getBaseVelocity(bodyUniqueId=object_num)
-        return EnvState(object_name=self.object_name, position=objectPos, rotation=objectOr, velocity=velocity,
-                        omega=omega)
+        if no_grad:
+            return_state = NoGradEnvState(object_name=self.object_name, position=objectPos, rotation=objectOr,
+                                          velocity=velocity, omega=omega)
+        else:
+            return_state = EnvState(object_name=self.object_name, position=objectPos, rotation=objectOr,
+                                    velocity=velocity, omega=omega)
+        return return_state
 
-    def init_location_and_apply_force(self, forces, initial_state, object_num, list_of_contact_points):
+    def init_location_and_apply_force(self, forces, initial_state, object_num, list_of_contact_points, no_grad=False):
         # format transform
         assert len(forces) == 5, 'Forces should have a dimension of 5.'
         all_forces = []
@@ -223,7 +228,7 @@ class PhysicsEnv(BaseBulletEnv):
 
         contact_points = self.vertex_points[list_of_contact_points]
 
-        latest_state = self.get_current_state()
+        latest_state = self.get_current_state(no_grad=no_grad)
         if self.gpu_ids != -1:
             latest_state.cuda_()
 
@@ -267,7 +272,7 @@ class PhysicsEnv(BaseBulletEnv):
         for step_number in range(self.number_of_steps_per_image):
             self.step()  # Do not remove this
 
-        current_state = self.get_current_state()
+        current_state = self.get_current_state(no_grad=no_grad)
 
         assert len(forces) == self.number_of_cp
 
