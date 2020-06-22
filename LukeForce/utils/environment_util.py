@@ -267,10 +267,6 @@ class NormEnvState:
             tensor = torch.cat([self.position, self.rotation], dim=-1)
         return tensor
 
-    # def clone(self):
-    #     return NormEnvState(norm_or_denorm=None, position=self.position.clone().detach(), rotation=self.rotation.clone().detach(), position_mean=None, position_std=None,
-    #                         velocity=self.velocity.clone().detach(), omega=self.omega.clone().detach())
-
     def __str__(self):
         return 'position:{},rotation:{},velocity:{},omega:{}'.format(self.position, self.rotation, self.velocity, self.omega)
 

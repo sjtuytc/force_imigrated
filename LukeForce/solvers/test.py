@@ -48,6 +48,7 @@ def test_one_epoch(model, loss, data_loader, epoch, args):
             before_forward_pass_time = time.time()
             # Forward pass
             model_output, target_output = model(input_dict, target_dict)
+            target_output['force_or_ns'] = None
             if args.save_dataset:
                 # input_dict: ['rgb', 'initial_position', 'initial_rotation', 'initial_keypoint', 'object_name',
                 # 'contact_points', 'timestamps']

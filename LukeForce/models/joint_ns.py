@@ -23,26 +23,31 @@ class JointNS(BaseModel):
 
     def __init__(self, args):
         super(JointNS, self).__init__(args)
+        self.image_feature_size = 512
+        self.object_feature_size = 512
+        self.hidden_size = 512
+        self.num_layers = 3
 
         self.loss_function = args.loss
-        self.relu = nn.LeakyReLU()
         self.number_of_cp = args.number_of_cp
         self.environment = args.instance_environment
         self.sequence_length = args.sequence_length
         self.gpu_ids = args.gpu_ids
         self.all_obj_names = args.object_list
-        self.force_grounding = not args.no_env
+        self.force_or_ns = None
+        if args.loss1_w < 0.0001:
+            self.force_or_ns = True   # update force only
+        elif args.loss2_w < 0.0001:
+            self.force_or_ns = False    # update ns only
 
+        # neural force simulator
+        self.one_ns_layer = MLPNS(hidden_size=64, layer_norm=False)
+        # self.ns_layer = {obj_name: MLPNS(hidden_size=64, layer_norm=False) for obj_name in self.all_obj_names}
+
+        # force predictor networks.
         self.feature_extractor = resnet18(pretrained=args.pretrain)
         del self.feature_extractor.fc
         self.feature_extractor.eval()
-
-        self.image_feature_size = 512
-        self.object_feature_size = 512
-        self.hidden_size = 512
-        self.num_layers = 3
-        self.one_ns_layer = MLPNS(hidden_size=64, layer_norm=False)
-        # self.ns_layer = {obj_name: MLPNS(hidden_size=64, layer_norm=False) for obj_name in self.all_obj_names}
         self.input_feature_size = self.object_feature_size
         self.cp_feature_size = self.number_of_cp * 3
         self.image_embed = combine_block_w_do(512, 64, args.dropout_ratio)
@@ -76,6 +81,12 @@ class JointNS(BaseModel):
         if args.gpu_ids != -1:
             for obj, val in self.all_objects_keypoint_tensor.items():
                 self.all_objects_keypoint_tensor[obj] = val.cuda()
+
+        self.force_predictor_modules = [self.feature_extractor, self.image_embed, self.contact_point_image_embed,
+                                        self.input_object_embed, self.contact_point_input_object_embed, self.state_embed,
+                                        self.lstm_encoder, self.contact_point_encoder, self.contact_point_decoder,
+                                        self.forces_directions_decoder]
+        self.force_optim, self.ns_optim = None, None
 
     def loss(self, args):
         return self.loss_function(args)
@@ -202,7 +213,25 @@ class JointNS(BaseModel):
         return output, target
 
     def optimizer(self):
-        return torch.optim.Adam(self.parameters(), lr=self.base_lr)
+        self.ns_optim = torch.optim.Adam(self.parameters(), lr=self.base_lr)
+        force_pred_paras = [{"params": mod.parameters()} for mod in self.force_predictor_modules]
+        self.force_optim = torch.optim.Adam(force_pred_paras, lr=self.base_lr)
+        return None
+
+    def step_optimizer(self, force_or_ns):
+        if self.force_or_ns is not None:
+            force_or_ns = self.force_or_ns
+        if not force_or_ns:
+            self.ns_optim.step()
+        else:
+            self.force_optim.step()
+        self.zero_grad()
+
+    def set_learning_rate(self, lr):
+        for param_group in self.ns_optim.param_groups:
+            param_group['lr'] = lr
+        for param_group in self.force_optim.param_groups:
+            param_group['lr'] = lr
 
     def cuda(self, device=None):
         self._apply(lambda t: t.cuda(device))
@@ -212,3 +241,4 @@ class JointNS(BaseModel):
 
     def to(self, *args, **kwargs):
         raise NotImplementedError("Please use .cuda() instead.")
+

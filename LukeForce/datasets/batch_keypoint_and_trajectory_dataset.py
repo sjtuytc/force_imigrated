@@ -21,6 +21,7 @@ def calculate_data_stats(final_data):
 
 
 class BatchDatasetWAugmentation(data.Dataset):
+    # deprecating
     def __init__(self, args, environment, bbox_gt=True, scale=224, train=True):
         # in original paper, scale is 224
         self.root_dir = args.data
@@ -97,7 +98,7 @@ class BatchDatasetWAugmentation(data.Dataset):
         self.final_obj2image = calculate_data_stats(self.all_possible_data)
         self.all_possible_data += self.get_possible_reverse_sequences()
 
-        if environment is None and not args.no_env:
+        if environment is None:
             print('initialize multiprocessing environments')
             environment = SubprocPhysicsEnv(args=args, object_paths=self.object_paths, context='spawn', nproc=11, nenvs=44)
             environment.reset()

@@ -125,8 +125,6 @@ def parse_args(log_info=True, save_log=True):
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--use_val', action='store_true')
     parser.add_argument('--use_syn', action='store_true')
-    parser.add_argument('--no_env', action='store_true', help="don't use physical environment, this option is used for the neural "
-                                                              "simulator oracle.")
     parser.add_argument('--qualitative_size', default=500, type=int)
     parser.add_argument('--no-pretrain', action='store_false', dest='pretrain')
     parser.add_argument('--object_list', default=['072-a_toy_airplane'], nargs='+', type=str, help='options: ALL or ycb objects')
@@ -141,7 +139,9 @@ def parse_args(log_info=True, save_log=True):
     parser.add_argument('--residual', action='store_true', help='predict residual')
     parser.add_argument('--dataset_size', default=1000000, type=int)
     parser.add_argument('--save_freq', default=100, type=int)
-    parser.add_argument('--balance', default=10, type=float)
+    parser.add_argument('--balance', default=10, type=float) # deprecating
+    parser.add_argument('--loss1_w', default=1.0, type=float)
+    parser.add_argument('--loss2_w', default=1.0, type=float)
     parser.add_argument('--train_num', default=10000000000, type=int)
     parser.add_argument('--ns_dataset_p', default='NSDataset_v1', type=str, help='path to save created NS dataset.')
     parser.add_argument('--vis_f', default='vis_results', type=str, help='path to save created NS dataset.')

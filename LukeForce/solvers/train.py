@@ -14,8 +14,12 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
     model.train()
     loss.train()
     lr = model.learning_rate(epoch)
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
+    ns_model = optimizer is None  # using neural force simulator
+    if ns_model:
+        model.set_learning_rate(lr=lr)
+    else:
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
 
     # Setup average meters
     data_time_meter = metrics.AverageMeter()
@@ -31,6 +35,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
     # Iterate over data
     timestamp = time.time()
     print("Begin train one epoch!")
+    force_or_ns = True  # if true, learn force; if False, update ns; if None, learn both.
     for i, (input_dict, target_dict) in enumerate(tqdm.tqdm(data_loader)):
         if 'rgb' in input_dict.keys():
             batch_size = input_dict['rgb'].size(0)
@@ -46,6 +51,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
             before_forward_pass_time = time.time()
             # Forward pass
             model_output, target_output = model(input_dict, target_dict)
+            target_output['force_or_ns'] = force_or_ns
             forward_pass_time_meter.update((time.time() - before_forward_pass_time) / batch_size, batch_size)
             before_loss_time = time.time()
             loss_output = loss(model_output, target_output)
@@ -57,8 +63,12 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
 
             model_output = {f: model_output[f].detach() for f in model_output.keys()}
             if i % args.break_batch == 0 or i == len(data_loader) - 1:
-                optimizer.step()
-                optimizer.zero_grad()
+                if optimizer is None:
+                    model.step_optimizer(force_or_ns)
+                    force_or_ns = not force_or_ns   # alternatively train two targets.
+                else:
+                    optimizer.step()
+                    optimizer.zero_grad()
 
             # Bookkeeping on loss, accuracy, and batch time
             loss_meter.update(loss_output.detach(), batch_size)
@@ -76,6 +86,8 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
             loss_values = loss.local_loss_dict
 
             for loss_name in loss_detail_meter:
+                if loss_values[loss_name] is None:
+                    continue
                 (loss_val, data_size) = loss_values[loss_name]
                 loss_detail_meter[loss_name].update(loss_val.item(), data_size)
             if i % args.tensorboard_log_freq == 0:
