@@ -93,9 +93,14 @@ class NpEnvState:
         return NpEnvState(object_name, position, rotation, velocity, omega)
 
 
-def nograd_envstate_from_tensor(object_name, env_tensor):
-    return NoGradEnvState(object_name=object_name, position=env_tensor[:3], rotation=env_tensor[3:7],
-                          velocity=env_tensor[7:10], omega=env_tensor[10:13], device=env_tensor.device)
+def nograd_envstate_from_tensor(object_name, env_tensor, clear_velocity):
+    if clear_velocity:
+        return_state = NoGradEnvState(object_name=object_name, position=env_tensor[:3], rotation=env_tensor[3:7],
+                                      velocity=None, omega=None, device=env_tensor.device)
+    else:
+        return_state = NoGradEnvState(object_name=object_name, position=env_tensor[:3], rotation=env_tensor[3:7],
+                                      velocity=env_tensor[7:10], omega=env_tensor[10:13], device=env_tensor.device)
+    return return_state
 
 
 class NoGradEnvState:

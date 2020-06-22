@@ -48,7 +48,7 @@ python main.py --title test_all_joint_training --sequence_length 10 --gpu-ids 0 
 
 ```shell
 # train the joint ns model.
-srun --gres=gpu:2 python main.py --title ns_joint_two_losses --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 0.0 train
+srun --gres=gpu:2 -w SH-IDC1-10-198-6-147 python main.py --title ns_joint_two_losses --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 0.0 train
 
 # train the full model (original, no batch processing)
 python main.py --title original_training --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train

@@ -34,11 +34,11 @@ class JointNS(BaseModel):
         self.sequence_length = args.sequence_length
         self.gpu_ids = args.gpu_ids
         self.all_obj_names = args.object_list
-        self.force_or_ns = None
-        if args.loss1_w < 0.0001:
-            self.force_or_ns = True   # update force only
-        elif args.loss2_w < 0.0001:
-            self.force_or_ns = False    # update ns only
+        self.loss1_or_loss2 = None
+        if args.loss1_w < 0.00001:
+            self.loss1_or_loss2 = False   # update loss2 only
+        elif args.loss2_w < 0.00001:
+            self.loss1_or_loss2 = True    # update loss1 only
 
         # neural force simulator
         self.one_ns_layer = MLPNS(hidden_size=64, layer_norm=False)
@@ -86,7 +86,7 @@ class JointNS(BaseModel):
                                         self.input_object_embed, self.contact_point_input_object_embed, self.state_embed,
                                         self.lstm_encoder, self.contact_point_encoder, self.contact_point_decoder,
                                         self.forces_directions_decoder]
-        self.force_optim, self.ns_optim = None, None
+        self.loss1_optim, self.loss2_optim = None, None
 
     def loss(self, args):
         return self.loss_function(args)
@@ -167,22 +167,25 @@ class JointNS(BaseModel):
             input_lstm_cell = torch.cat([initial_frame_feature, current_frame_feature], dim=-1)
             (hn, cn) = self.lstm_decoder(input_lstm_cell, (hn, cn))
             force = self.forces_directions_decoder(hn)
-            # cur_obj_ns_layer = self.ns_layer[object_name]
-            # step neural force simulator
-            # predicted_state_tensor = cur_obj_ns_layer(ns_state_tensor, force, contact_point_as_input)
-            predicted_state_tensor = self.one_ns_layer(ns_state_tensor, force, contact_point_as_input)
-            ns_positions.append(predicted_state_tensor[0][:3])
-            ns_rotations.append(predicted_state_tensor[0][3:7])
 
             # step physical simulator
-            cur_state = nograd_envstate_from_tensor(object_name=object_name, env_tensor=ns_state_tensor[0])
-            phy_env_state, _, _ = \
+            cur_state = nograd_envstate_from_tensor(object_name=object_name, env_tensor=ns_state_tensor[0],
+                                                    clear_velocity=True)
+            phy_env_state, succ_flags, force_locations, force_values = \
                 self.environment.init_location_and_apply_force(forces=force[0].reshape(5, -1), initial_state=cur_state,
                                                                list_of_contact_points=contact_point_as_input[0].reshape(5, -1),
-                                                               no_grad=True)
+                                                               no_grad=True, return_force_value=True)
             phy_state_tensor = phy_env_state.toTensorCoverName()
             phy_positions.append(phy_state_tensor[:3])
             phy_rotations.append(phy_state_tensor[3:7])
+
+            # step neural force simulator
+            # cur_obj_ns_layer = self.ns_layer[object_name]
+            # predicted_state_tensor = cur_obj_ns_layer(ns_state_tensor, force, contact_point_as_input)
+            cleaned_force, cleaned_cp = torch.stack(force_values).unsqueeze(0), torch.stack(force_locations).unsqueeze(0)
+            predicted_state_tensor = self.one_ns_layer(ns_state_tensor, cleaned_force, cleaned_cp)
+            ns_positions.append(predicted_state_tensor[0][:3])
+            ns_rotations.append(predicted_state_tensor[0][3:7])
 
             # update to next state
             ns_state_tensor = predicted_state_tensor
@@ -213,24 +216,24 @@ class JointNS(BaseModel):
         return output, target
 
     def optimizer(self):
-        self.ns_optim = torch.optim.Adam(self.parameters(), lr=self.base_lr)
-        force_pred_paras = [{"params": mod.parameters()} for mod in self.force_predictor_modules]
-        self.force_optim = torch.optim.Adam(force_pred_paras, lr=self.base_lr)
+        self.loss1_optim = torch.optim.Adam(self.parameters(), lr=self.base_lr)
+        # force_pred_paras = [{"params": mod.parameters()} for mod in self.force_predictor_modules]
+        self.loss2_optim = torch.optim.Adam(self.parameters(), lr=self.base_lr)
         return None
 
-    def step_optimizer(self, force_or_ns):
-        if self.force_or_ns is not None:
-            force_or_ns = self.force_or_ns
-        if not force_or_ns:
-            self.ns_optim.step()
+    def step_optimizer(self, loss1_or_loss2):
+        if self.loss1_or_loss2 is not None:
+            loss1_or_loss2 = self.loss1_or_loss2
+        if loss1_or_loss2:  # True for update force, False for update ns.
+            self.loss1_optim.step()
         else:
-            self.force_optim.step()
+            self.loss2_optim.step()
         self.zero_grad()
 
     def set_learning_rate(self, lr):
-        for param_group in self.ns_optim.param_groups:
+        for param_group in self.loss1_optim.param_groups:
             param_group['lr'] = lr
-        for param_group in self.force_optim.param_groups:
+        for param_group in self.loss2_optim.param_groups:
             param_group['lr'] = lr
 
     def cuda(self, device=None):
@@ -241,4 +244,3 @@ class JointNS(BaseModel):
 
     def to(self, *args, **kwargs):
         raise NotImplementedError("Please use .cuda() instead.")
-

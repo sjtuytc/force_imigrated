@@ -35,7 +35,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
     # Iterate over data
     timestamp = time.time()
     print("Begin train one epoch!")
-    force_or_ns = True  # if true, learn force; if False, update ns; if None, learn both.
+    loss1_or_loss2 = True  # if true, update loss1; else, update loss2. If None, learn both.
     for i, (input_dict, target_dict) in enumerate(tqdm.tqdm(data_loader)):
         if 'rgb' in input_dict.keys():
             batch_size = input_dict['rgb'].size(0)
@@ -51,7 +51,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
             before_forward_pass_time = time.time()
             # Forward pass
             model_output, target_output = model(input_dict, target_dict)
-            target_output['force_or_ns'] = force_or_ns
+            target_output['loss1_or_loss2'] = loss1_or_loss2
             forward_pass_time_meter.update((time.time() - before_forward_pass_time) / batch_size, batch_size)
             before_loss_time = time.time()
             loss_output = loss(model_output, target_output)
@@ -64,8 +64,8 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
             model_output = {f: model_output[f].detach() for f in model_output.keys()}
             if i % args.break_batch == 0 or i == len(data_loader) - 1:
                 if optimizer is None:
-                    model.step_optimizer(force_or_ns)
-                    force_or_ns = not force_or_ns   # alternatively train two targets.
+                    model.step_optimizer(loss1_or_loss2)
+                    loss1_or_loss2 = not loss1_or_loss2   # alternatively train two targets.
                 else:
                     optimizer.step()
                     optimizer.zero_grad()

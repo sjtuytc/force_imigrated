@@ -58,6 +58,34 @@ class MLPNS(nn.Module):
         return state_tensor + predict_residual_state
 
 
+class NSWithImageFeature(nn.Module):
+    def __init__(self, hidden_size=64, layer_norm=True, image_feature_dim=225):
+        super(NSWithImageFeature, self).__init__()
+        self.force_feature_size, self.state_feature_size, self.cp_feature_size, self.img_feature_size = \
+            hidden_size, hidden_size, hidden_size, hidden_size
+        self.state_tensor_dim, self.force_tensor_dim, self.cp_tensor_dim, self.img_feature_dim = \
+            14, 15, 15, image_feature_dim
+        self.state_encoder = MlpLayer(input_d=self.state_tensor_dim, output_d=self.state_feature_size,
+                                      layer_norm=layer_norm)
+        self.force_encoder = MlpLayer(input_d=self.force_tensor_dim, output_d=self.force_feature_size,
+                                      layer_norm=layer_norm)
+        self.cp_encoder = MlpLayer(input_d=self.cp_tensor_dim, output_d=self.cp_feature_size, layer_norm=layer_norm)
+        total_dim_before_decode = self.state_feature_size + self.force_feature_size + self.cp_feature_size
+        self.force_decoder = MlpLayer(input_d=total_dim_before_decode, output_d=self.state_tensor_dim,
+                                      layer_norm=layer_norm)
+
+    def forward(self, state_tensor, force_tensor, contact_points):
+        batch_size = force_tensor.shape[0]
+        force_tensor, contact_points, state_tensor = force_tensor.reshape(batch_size, -1), contact_points.reshape(batch_size, -1), \
+                                                     state_tensor.reshape(batch_size, -1)
+        force_feature = self.force_encoder(force_tensor)
+        state_feature = self.state_encoder(state_tensor)
+        cp_feature = self.cp_encoder(contact_points)
+        fused_feature = torch.cat([force_feature, state_feature, cp_feature], dim=-1)
+        predict_residual_state = self.force_decoder(fused_feature)
+        return state_tensor + predict_residual_state
+
+
 def get_denorm_state_tensor(state_ten, stat):
     pos_mean, pos_std, rot_mean, rot_std,  = \
         stat['position_mean'], stat['position_std'], stat['rotation_mean'], stat['rotation_std']
@@ -70,6 +98,7 @@ def get_denorm_state_tensor(state_ten, stat):
 
 
 class NSBaseModel(BaseModel):
+    # deprecating
     metric = [metrics.StateMetric]
 
     def __init__(self, args, ):

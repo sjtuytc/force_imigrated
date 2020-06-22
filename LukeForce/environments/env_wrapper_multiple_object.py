@@ -31,7 +31,7 @@ class MultipleObjectWrapper:
         return self.list_of_envs[object_name]
 
     def init_location_and_apply_force(self, forces, initial_state, object_num=None, list_of_contact_points=None,
-                                      no_grad=False):
+                                      no_grad=False, return_force_value=False):
         assert list_of_contact_points is not None
         if type(initial_state) == dict:
             object_name = initial_state['object_name']
@@ -39,7 +39,8 @@ class MultipleObjectWrapper:
             object_name = initial_state.object_name
         return self.list_of_envs[object_name].init_location_and_apply_force(forces, initial_state, object_num,
                                                                             list_of_contact_points,
-                                                                            no_grad=no_grad)
+                                                                            no_grad=no_grad,
+                                                                            return_force_value=return_force_value)
 
     def close(self):
         for obj in self.object_paths:

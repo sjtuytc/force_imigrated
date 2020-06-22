@@ -190,7 +190,8 @@ class PhysicsEnv(BaseBulletEnv):
                                     velocity=velocity, omega=omega)
         return return_state
 
-    def init_location_and_apply_force(self, forces, initial_state, object_num, list_of_contact_points, no_grad=False):
+    def init_location_and_apply_force(self, forces, initial_state, object_num, list_of_contact_points, no_grad=False,
+                                      return_force_value=False):
         # format transform
         assert len(forces) == 5, 'Forces should have a dimension of 5.'
         all_forces = []
@@ -275,8 +276,10 @@ class PhysicsEnv(BaseBulletEnv):
         current_state = self.get_current_state(no_grad=no_grad)
 
         assert len(forces) == self.number_of_cp
-
-        return current_state, list_of_force_success, list_of_force_location
+        if return_force_value:
+            return current_state, list_of_force_success, list_of_force_location, list_of_applied_forces
+        else:
+            return current_state, list_of_force_success, list_of_force_location
 
     def apply_force_to_obj(self, force_to_apply, contact_point, surface_normal, object_num=None):
         if object_num is None:

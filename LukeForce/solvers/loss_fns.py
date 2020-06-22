@@ -226,21 +226,21 @@ class JointNSProjectionLoss(BasicLossFunction):
             'loss2_force_grouding': args.loss2_w,
             'loss_cp_prediction': 5.,
         }
-        self.force_or_ns = None
-        if args.loss1_w < 0.0001:
-            self.force_or_ns = True   # update force only
-        elif args.loss2_w < 0.0001:
-            self.force_or_ns = False    # update ns only
+        self.loss1_or_loss2 = None
+        if args.loss1_w < 0.00001:
+            self.loss1_or_loss2 = False   # update loss2 only
+        elif args.loss2_w < 0.00001:
+            self.loss1_or_loss2 = True    # update loss1 only
 
     def forward(self, output, target):
-        force_or_ns = target['force_or_ns']
-        if self.force_or_ns is not None:
-            force_or_ns = self.force_or_ns
+        loss1_or_loss2 = target['loss1_or_loss2']
+        if self.loss1_or_loss2 is not None:
+            loss1_or_loss2 = self.loss1_or_loss2
         loss_cp_prediction_value = self.loss_cp_prediction(output, target)
         gt_kps = target['keypoints']
         phy_kps = output['phy_keypoints']
         ns_kps = output['ns_keypoints']
-        if force_or_ns is None:
+        if loss1_or_loss2 is None:
             loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.loss_keypoint_loss,
                                                       default_img_size=self.default_image_size)
             loss2_force_grounding_value = cal_kp_loss(ns_kps, phy_kps, self.loss_keypoint_loss,
@@ -250,7 +250,7 @@ class JointNSProjectionLoss(BasicLossFunction):
                 'loss2_force_grouding': loss2_force_grounding_value,
                 'loss_cp_prediction': loss_cp_prediction_value,
             }
-        elif not force_or_ns:
+        elif not loss1_or_loss2:
             loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.loss_keypoint_loss,
                                                       default_img_size=self.default_image_size)
             loss_dict = {
