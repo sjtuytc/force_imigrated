@@ -55,6 +55,7 @@ class MLPNS(nn.Module):
         cp_feature = self.cp_encoder(contact_points)
         fused_feature = torch.cat([force_feature, state_feature, cp_feature], dim=-1)
         predict_residual_state = self.force_decoder(fused_feature)
+        predict_residual_state[:, :3] /= 10
         return state_tensor + predict_residual_state
 
 
@@ -70,19 +71,24 @@ class NSWithImageFeature(nn.Module):
         self.force_encoder = MlpLayer(input_d=self.force_tensor_dim, output_d=self.force_feature_size,
                                       layer_norm=layer_norm)
         self.cp_encoder = MlpLayer(input_d=self.cp_tensor_dim, output_d=self.cp_feature_size, layer_norm=layer_norm)
-        total_dim_before_decode = self.state_feature_size + self.force_feature_size + self.cp_feature_size
+        self.image_encoder = MlpLayer(input_d=self.img_feature_dim, output_d=self.img_feature_size,
+                                      layer_norm=layer_norm)
+        total_dim_before_decode = self.state_feature_size + self.force_feature_size + self.cp_feature_size + \
+                                  self.img_feature_size
         self.force_decoder = MlpLayer(input_d=total_dim_before_decode, output_d=self.state_tensor_dim,
                                       layer_norm=layer_norm)
 
-    def forward(self, state_tensor, force_tensor, contact_points):
+    def forward(self, state_tensor, force_tensor, contact_points, image_feature):
         batch_size = force_tensor.shape[0]
         force_tensor, contact_points, state_tensor = force_tensor.reshape(batch_size, -1), contact_points.reshape(batch_size, -1), \
                                                      state_tensor.reshape(batch_size, -1)
         force_feature = self.force_encoder(force_tensor)
         state_feature = self.state_encoder(state_tensor)
         cp_feature = self.cp_encoder(contact_points)
-        fused_feature = torch.cat([force_feature, state_feature, cp_feature], dim=-1)
+        img_feature = self.image_encoder(image_feature)
+        fused_feature = torch.cat([force_feature, state_feature, cp_feature, img_feature], dim=-1)
         predict_residual_state = self.force_decoder(fused_feature)
+        predict_residual_state[:, :3] /= 10
         return state_tensor + predict_residual_state
 
 

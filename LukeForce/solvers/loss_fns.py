@@ -132,6 +132,7 @@ class ForceRegressionLoss(BasicLossFunction):
 
 
 def cal_kp_loss(output_keypoints, target_keypoints, loss_fn, default_img_size=DEFAULT_IMAGE_SIZE):
+    # note: this is different from original implementation.
     assert output_keypoints.shape == target_keypoints.shape
     if output_keypoints.device != default_img_size.device:
         default_img_size = default_img_size.to(output_keypoints.device)
@@ -140,14 +141,16 @@ def cal_kp_loss(output_keypoints, target_keypoints, loss_fn, default_img_size=DE
     output_keypoints = output_keypoints / default_img_size
     target_keypoints = target_keypoints / default_img_size
 
-    output_keypoints = torch.clamp(output_keypoints, -5, 5)
-    number_of_elements = target_keypoints.numel()
-    not_masked_target = target_keypoints > 1e-10
-    number_of_unmasked_elements = not_masked_target.sum().item()
+    # output_keypoints = torch.clamp(output_keypoints, -5, 5)
+    # target_keypoints = torch.clamp(target_keypoints, -5, 5)
+    # the target keypoints should be larger than 1e-10, we allow the output keypoints to be -5 at most.
+    selected_ele_mask = (target_keypoints < 5) * (target_keypoints > 1e-10) * (output_keypoints < 5) * (output_keypoints > -5)
+    num_all_ele = target_keypoints.numel()
+    num_selected_ele = selected_ele_mask.sum().item()
 
-    if number_of_unmasked_elements > 0:
-        keypoint_projection = loss_fn(output_keypoints[not_masked_target], target_keypoints[not_masked_target])
-        keypoint_projection = keypoint_projection * float(number_of_unmasked_elements) / number_of_elements  # Normalization
+    if num_selected_ele > 0:
+        keypoint_projection = loss_fn(output_keypoints[selected_ele_mask], target_keypoints[selected_ele_mask])
+        keypoint_projection = keypoint_projection * float(num_selected_ele) / num_all_ele  # Normalization
     else:  # Just a dummy thing
         keypoint_projection = torch.tensor(0.0, requires_grad=True, device=output_keypoints.device)
     return keypoint_projection
@@ -250,7 +253,7 @@ class JointNSProjectionLoss(BasicLossFunction):
                 'loss2_force_grouding': loss2_force_grounding_value,
                 'loss_cp_prediction': loss_cp_prediction_value,
             }
-        elif not loss1_or_loss2:
+        elif loss1_or_loss2:  # select loss1
             loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.loss_keypoint_loss,
                                                       default_img_size=self.default_image_size)
             loss_dict = {

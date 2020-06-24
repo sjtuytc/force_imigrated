@@ -1,7 +1,7 @@
 import torch
 from utils.quaternion_util import get_quaternion_distance
 from utils.custom_quaternion import quaternion_to_euler_angle
-
+from utils.constants import DEFAULT_IMAGE_SIZE
 
 class AverageMeter(object):
 
@@ -206,14 +206,20 @@ class ObjPositionMetric(BaseMetric):
 
 
 def cal_kp_dis(output_kp, target_kp):
+    # Note: this is different from original implementation.
+    kp_range = int(1.5 * max(DEFAULT_IMAGE_SIZE.cpu().tolist()))
     assert output_kp.shape == target_kp.shape
     if target_kp.device != output_kp.device:
         target_kp = target_kp.to(output_kp.device)
-    output_kp = output_kp.clamp(-5000, 5000)
+    output_kp = output_kp.clamp(-kp_range, kp_range)
+    target_kp = target_kp.clamp(-kp_range, kp_range)
     mask = target_kp <= 1e-10
     not_masked = ~ (mask.sum(dim=-1) > 0)
-    diff = torch.abs(output_kp[not_masked] - target_kp[not_masked]).norm(dim=-1)
-    keypoint_loss = diff.mean()
+    if not_masked.sum().item() > 0:
+        diff = torch.abs(output_kp[not_masked] - target_kp[not_masked]).norm(dim=-1)
+        keypoint_loss = diff.mean()
+    else:
+        keypoint_loss = None
     return keypoint_loss
 
 
@@ -265,12 +271,13 @@ class StateGroundingMetric(BaseMetric):
         ns_kp = output['ns_keypoints']
         gt_kp = target['keypoints']
         keypoint_loss = cal_kp_dis(output_kp=ns_kp, target_kp=gt_kp)
-        batch_size = 1
-        object_name = target['object_name']
-        assert len(object_name) == 1
-        object_name = object_name[0]
-        self.meter[object_name].update(keypoint_loss, batch_size)
-        self.meter['overall'].update(keypoint_loss, batch_size)
+        if keypoint_loss is not None:
+            batch_size = 1
+            object_name = target['object_name']
+            assert len(object_name) == 1
+            object_name = object_name[0]
+            self.meter[object_name].update(keypoint_loss, batch_size)
+            self.meter['overall'].update(keypoint_loss, batch_size)
 
     def report(self):
         return 'StateGroundingMetric:{}'.format((self.meter['overall'].avg)).replace('\n', '; ')
@@ -294,12 +301,13 @@ class ForceGroundingMetric(BaseMetric):
         ns_kp = output['ns_keypoints']
         phy_kp = output['phy_keypoints']
         keypoint_loss = cal_kp_dis(output_kp=ns_kp, target_kp=phy_kp)
-        batch_size = 1
-        object_name = target['object_name']
-        assert len(object_name) == 1
-        object_name = object_name[0]
-        self.meter[object_name].update(keypoint_loss, batch_size)
-        self.meter['overall'].update(keypoint_loss, batch_size)
+        if keypoint_loss is not None:
+            batch_size = 1
+            object_name = target['object_name']
+            assert len(object_name) == 1
+            object_name = object_name[0]
+            self.meter[object_name].update(keypoint_loss, batch_size)
+            self.meter['overall'].update(keypoint_loss, batch_size)
 
     def report(self):
         return 'ForceGroundingMetric:{}'.format((self.meter['overall'].avg)).replace('\n', '; ')
@@ -323,12 +331,13 @@ class ForcePredictionMetric(BaseMetric):
         gt_kp = target['keypoints']
         phy_kp = output['phy_keypoints']
         keypoint_loss = cal_kp_dis(output_kp=phy_kp, target_kp=gt_kp)
-        batch_size = 1
-        object_name = target['object_name']
-        assert len(object_name) == 1
-        object_name = object_name[0]
-        self.meter[object_name].update(keypoint_loss, batch_size)
-        self.meter['overall'].update(keypoint_loss, batch_size)
+        if keypoint_loss is not None:
+            batch_size = 1
+            object_name = target['object_name']
+            assert len(object_name) == 1
+            object_name = object_name[0]
+            self.meter[object_name].update(keypoint_loss, batch_size)
+            self.meter['overall'].update(keypoint_loss, batch_size)
 
     def report(self):
         return 'ForcePredictionMetric:{}'.format((self.meter['overall'].avg)).replace('\n', '; ')

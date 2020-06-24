@@ -5,6 +5,7 @@ import torch
 from . import metrics
 import tqdm
 from utils.tensor_utils import dict_of_tensor_to_cuda
+from IPython import embed
 
 
 def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
@@ -105,7 +106,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
                     result_log_dict['Loss/' + loss_name] = loss_detail_meter[loss_name].avg
 
                 for ac in accuracy_metric:
-                    result_log_dict[type(ac).__name__] = ac.average()
+                    result_log_dict[type(ac).__name__] = ac.average()  # record average for every object.
                 args.logging_module.log(result_log_dict, real_index + 1, add_to_keys=add_to_keys)
 
             timestamp = time.time()

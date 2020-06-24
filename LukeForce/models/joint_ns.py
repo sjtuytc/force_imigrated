@@ -2,7 +2,7 @@ import torch
 import time
 import torch.nn as nn
 from .base_model import BaseModel
-from .ns_base_model import MLPNS
+from .ns_base_model import MLPNS, NSWithImageFeature
 from utils.net_util import input_embedding_net, combine_block_w_do
 
 from torchvision.models.resnet import resnet18
@@ -34,14 +34,22 @@ class JointNS(BaseModel):
         self.sequence_length = args.sequence_length
         self.gpu_ids = args.gpu_ids
         self.all_obj_names = args.object_list
+
+        # configs w.r.t. two losses
+        self.joint_two_losses = args.joint_two_losses
         self.loss1_or_loss2 = None
         if args.loss1_w < 0.00001:
             self.loss1_or_loss2 = False   # update loss2 only
         elif args.loss2_w < 0.00001:
             self.loss1_or_loss2 = True    # update loss1 only
+        self.loss1_optim, self.loss2_optim, self.joint_optim = None, None, None
 
         # neural force simulator
-        self.one_ns_layer = MLPNS(hidden_size=64, layer_norm=False)
+        self.use_image_feature = True
+        if not self.use_image_feature:
+            self.one_ns_layer = MLPNS(hidden_size=64, layer_norm=False)
+        else:
+            self.one_ns_layer = NSWithImageFeature(hidden_size=64, layer_norm=False, image_feature_dim=512)
         # self.ns_layer = {obj_name: MLPNS(hidden_size=64, layer_norm=False) for obj_name in self.all_obj_names}
 
         # force predictor networks.
@@ -86,7 +94,6 @@ class JointNS(BaseModel):
                                         self.input_object_embed, self.contact_point_input_object_embed, self.state_embed,
                                         self.lstm_encoder, self.contact_point_encoder, self.contact_point_decoder,
                                         self.forces_directions_decoder]
-        self.loss1_optim, self.loss2_optim = None, None
 
     def loss(self, args):
         return self.loss_function(args)
@@ -169,6 +176,7 @@ class JointNS(BaseModel):
             force = self.forces_directions_decoder(hn)
 
             # step physical simulator
+            assert len(ns_state_tensor) == 1, "only support bs = 1."
             cur_state = nograd_envstate_from_tensor(object_name=object_name, env_tensor=ns_state_tensor[0],
                                                     clear_velocity=True)
             phy_env_state, succ_flags, force_locations, force_values = \
@@ -183,7 +191,10 @@ class JointNS(BaseModel):
             # cur_obj_ns_layer = self.ns_layer[object_name]
             # predicted_state_tensor = cur_obj_ns_layer(ns_state_tensor, force, contact_point_as_input)
             cleaned_force, cleaned_cp = torch.stack(force_values).unsqueeze(0), torch.stack(force_locations).unsqueeze(0)
-            predicted_state_tensor = self.one_ns_layer(ns_state_tensor, cleaned_force, cleaned_cp)
+            if self.use_image_feature:
+                predicted_state_tensor = self.one_ns_layer(ns_state_tensor, cleaned_force, cleaned_cp, hn)
+            else:
+                predicted_state_tensor = self.one_ns_layer(ns_state_tensor, cleaned_force, cleaned_cp)
             ns_positions.append(predicted_state_tensor[0][:3])
             ns_rotations.append(predicted_state_tensor[0][3:7])
 
@@ -216,25 +227,36 @@ class JointNS(BaseModel):
         return output, target
 
     def optimizer(self):
-        self.loss1_optim = torch.optim.Adam(self.parameters(), lr=self.base_lr)
-        # force_pred_paras = [{"params": mod.parameters()} for mod in self.force_predictor_modules]
-        self.loss2_optim = torch.optim.Adam(self.parameters(), lr=self.base_lr)
+        if self.joint_two_losses:
+            self.joint_optim = torch.optim.Adam(self.parameters(), lr=self.base_lr)
+        else:
+            self.loss1_optim = torch.optim.Adam(self.parameters(), lr=self.base_lr)
+            # force_pred_paras = [{"params": mod.parameters()} for mod in self.force_predictor_modules]
+            self.loss2_optim = torch.optim.Adam(self.parameters(), lr=self.base_lr)
         return None
 
     def step_optimizer(self, loss1_or_loss2):
-        if self.loss1_or_loss2 is not None:
-            loss1_or_loss2 = self.loss1_or_loss2
-        if loss1_or_loss2:  # True for update force, False for update ns.
-            self.loss1_optim.step()
+        if self.joint_optim is not None:
+            self.joint_optim.step()
         else:
-            self.loss2_optim.step()
+            if self.loss1_or_loss2 is not None:
+                loss1_or_loss2 = self.loss1_or_loss2
+            if loss1_or_loss2:  # True for update force, False for update ns.
+                self.loss1_optim.step()
+            else:
+                self.loss2_optim.step()
         self.zero_grad()
 
     def set_learning_rate(self, lr):
-        for param_group in self.loss1_optim.param_groups:
-            param_group['lr'] = lr
-        for param_group in self.loss2_optim.param_groups:
-            param_group['lr'] = lr
+        if self.loss1_optim is not None:
+            for param_group in self.loss1_optim.param_groups:
+                param_group['lr'] = lr
+        if self.loss2_optim is not None:
+            for param_group in self.loss2_optim.param_groups:
+                param_group['lr'] = lr
+        if self.joint_optim is not None:
+            for param_group in self.joint_optim.param_groups:
+                param_group['lr'] = lr
 
     def cuda(self, device=None):
         self._apply(lambda t: t.cuda(device))

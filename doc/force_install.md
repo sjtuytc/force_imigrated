@@ -48,7 +48,10 @@ python main.py --title test_all_joint_training --sequence_length 10 --gpu-ids 0 
 
 ```shell
 # train the joint ns model.
-srun --gres=gpu:2 -w SH-IDC1-10-198-6-147 python main.py --title ns_joint_two_losses --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 0.0 train
+srun --gres=gpu:2 -w SH-IDC1-10-198-6-147 python main.py --title v2_ns_joint_two_losses_with_img --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 train
+
+# update two losses at the same time
+srun --gres=gpu:2 -w SH-IDC1-10-198-6-147 python main.py --title v2_ns_joint_two_losses_with_img --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 --joint_two_losses train
 
 # train the full model (original, no batch processing)
 python main.py --title original_training --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
@@ -113,3 +116,12 @@ python debug/test_subproc_physics_env.py --title joint_training --sequence_lengt
 # test physical layer.
 python debug/test_physics_layer.py --title joint_training --sequence_length 10 --gpu-ids -1 --environment NpPhysicsEnv --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 ```
+
+## Supple Sec
+
+```shell
+git fetch --all
+git reset --hard origin/master
+git pull
+```
+

@@ -91,7 +91,8 @@ class PhysicsEnv(BaseBulletEnv):
             projected_force = torch.cross(surface_normal, a_cross_b / surface_normal.norm()) / surface_normal.norm()
             return 0.5, projected_force
         else:
-            return 0, None
+            return 0, force_value
+            # return 0, None. we don't return None because it would cause error.
 
     def initiate_object(self, object_path):
         unique_id = self._p.loadURDF(object_path, basePosition=[0.5, 0.5, 0.5], baseOrientation=[1, 0, 0, 0],
@@ -192,7 +193,7 @@ class PhysicsEnv(BaseBulletEnv):
 
     def init_location_and_apply_force(self, forces, initial_state, object_num, list_of_contact_points, no_grad=False,
                                       return_force_value=False):
-        # format transform
+        # format transform.
         assert len(forces) == 5, 'Forces should have a dimension of 5.'
         all_forces = []
         for idx, force in enumerate(forces):
@@ -209,7 +210,8 @@ class PhysicsEnv(BaseBulletEnv):
             list_of_contact_points = list_of_contact_points.to(self.device)
             all_forces = [f.to(self.device) for f in all_forces]
         forces = all_forces
-        # update list of contact points
+
+        # update list of contact points, find target object.
         if list_of_contact_points is None:
             gap = int(len(self.vertex_points) / self.number_of_cp)
             list_of_contact_points = [i * gap for i in range(self.number_of_cp)]
@@ -293,7 +295,7 @@ class PhysicsEnv(BaseBulletEnv):
                                                        surface_normal=surface_normal)
             force_success = hit_
 
-            if hit_ > 0:
+            if hit_ > 0:  # this should always happen
                 self._p.applyExternalForce(objectUniqueId=object_num, linkIndex=-1, posObj=contact_point,
                                            forceObj=force_to_apply * self.force_multiplier, flags=self._p.WORLD_FRAME)
 

@@ -106,7 +106,7 @@ def parse_args(log_info=True, save_log=True):
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--number_of_cp', default=5, type=int)
     parser.add_argument('--manual_epoch', default=None, type=int)
-    parser.add_argument('--tensorboard_log_freq', default=100, type=int)
+    parser.add_argument('--tensorboard_log_freq', default=1000, type=int)
     parser.add_argument('--sequence_length', default=10, type=int)
     parser.add_argument('--force_multiplier', default=4, type=float)
     parser.add_argument('--force_h', default=0.01, type=float)
@@ -129,6 +129,7 @@ def parse_args(log_info=True, save_log=True):
     parser.add_argument('--no-pretrain', action='store_false', dest='pretrain')
     parser.add_argument('--object_list', default=['072-a_toy_airplane'], nargs='+', type=str, help='options: ALL or ycb objects')
     parser.add_argument('--gpu-ids', type=int, default=-1, nargs='+', help='GPUs to use [-1 CPU only] (default: -1)')
+    parser.add_argument('--set-gpu-ids-in-env', action='store_true')
     parser.add_argument('--vis', action='store_true', help='visualization test results.')
 
     # options for creating NS dataset and training NS
@@ -138,10 +139,11 @@ def parse_args(log_info=True, save_log=True):
     parser.add_argument('--lstm', action='store_true')
     parser.add_argument('--residual', action='store_true', help='predict residual')
     parser.add_argument('--dataset_size', default=1000000, type=int)
-    parser.add_argument('--save_freq', default=100, type=int)
-    parser.add_argument('--balance', default=10, type=float) # deprecating
+    parser.add_argument('--save_freq', default=1000, type=int, help="frequency to save dataset")
+    parser.add_argument('--balance', default=10, type=float)  # deprecating
     parser.add_argument('--loss1_w', default=1.0, type=float)
     parser.add_argument('--loss2_w', default=1.0, type=float)
+    parser.add_argument('--joint_two_losses', action='store_true', help='optimize two losses jointly')
     parser.add_argument('--train_num', default=10000000000, type=int)
     parser.add_argument('--ns_dataset_p', default='NSDataset_v1', type=str, help='path to save created NS dataset.')
     parser.add_argument('--vis_f', default='vis_results', type=str, help='path to save created NS dataset.')
@@ -151,6 +153,9 @@ def parse_args(log_info=True, save_log=True):
     args.logdir = args.data
 
     args.save = os.path.join(args.logdir, args.save)
+
+    if args.set_gpu_ids_in_env and args.gpu_ids != [-1]:
+        os.environ['CUDA_VISIBLE_DEVICES'] = ",".join([str(ele) for ele in list(args.gpu_ids)])
 
     if args.gpu_ids == [-1]:
         args.gpu_ids = -1

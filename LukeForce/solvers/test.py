@@ -103,6 +103,8 @@ def test_one_epoch(model, loss, data_loader, epoch, args):
 
             loss_values = loss.local_loss_dict
             for loss_name in loss_detail_meter:
+                if loss_values[loss_name] is None:
+                    continue
                 (loss_val, data_size) = loss_values[loss_name]
                 loss_detail_meter[loss_name].update(loss_val.item(), data_size)
 
@@ -148,7 +150,8 @@ def test_one_epoch(model, loss, data_loader, epoch, args):
                            'Time {batch_time.sum:.2f}   Data {data_time.sum:.2f}  Loss {loss.avg:.6f}   '
                            '{accuracy_report}'.format(batch_time=batch_time_meter, data_time=data_time_meter,
                                                       loss=loss_meter,
-                                                      accuracy_report='\n'.join([ac.final_report() for ac in accuracy_metric])))
+                                                      accuracy_report='\n'.join([ac.final_report()
+                                                                                 for ac in accuracy_metric])))
 
     logging.info(testing_summary)
     logging.info('Full test result is at {}'.format(
