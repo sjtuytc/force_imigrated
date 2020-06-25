@@ -35,6 +35,8 @@ class JointNS(BaseModel):
         self.gpu_ids = args.gpu_ids
         self.all_obj_names = args.object_list
 
+        self.clean_force = False
+
         # configs w.r.t. two losses
         self.joint_two_losses = args.joint_two_losses
         self.loss1_or_loss2 = None
@@ -190,9 +192,13 @@ class JointNS(BaseModel):
             # step neural force simulator
             # cur_obj_ns_layer = self.ns_layer[object_name]
             # predicted_state_tensor = cur_obj_ns_layer(ns_state_tensor, force, contact_point_as_input)
-            cleaned_force, cleaned_cp = torch.stack(force_values).unsqueeze(0), torch.stack(force_locations).unsqueeze(0)
+            if self.clean_force:
+                cleaned_force, cleaned_cp = torch.stack(force_values).unsqueeze(0), torch.stack(force_locations).unsqueeze(0)
+            else:
+                cleaned_force, cleaned_cp = force, contact_point_as_input
             if self.use_image_feature:
-                predicted_state_tensor = self.one_ns_layer(ns_state_tensor, cleaned_force, cleaned_cp, hn)
+                predicted_state_tensor = self.one_ns_layer(ns_state_tensor[:, :7], cleaned_force, cleaned_cp,
+                                                           current_frame_feature)
             else:
                 predicted_state_tensor = self.one_ns_layer(ns_state_tensor, cleaned_force, cleaned_cp)
             ns_positions.append(predicted_state_tensor[0][:3])

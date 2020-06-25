@@ -65,7 +65,7 @@ class NSWithImageFeature(nn.Module):
         self.force_feature_size, self.state_feature_size, self.cp_feature_size, self.img_feature_size = \
             hidden_size, hidden_size, hidden_size, hidden_size
         self.state_tensor_dim, self.force_tensor_dim, self.cp_tensor_dim, self.img_feature_dim = \
-            14, 15, 15, image_feature_dim
+            7, 15, 15, image_feature_dim
         self.state_encoder = MlpLayer(input_d=self.state_tensor_dim, output_d=self.state_feature_size,
                                       layer_norm=layer_norm)
         self.force_encoder = MlpLayer(input_d=self.force_tensor_dim, output_d=self.force_feature_size,
