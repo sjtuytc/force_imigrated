@@ -31,36 +31,24 @@ tar xvzf force_cvpr2020_trained_weights.tar.gz
 pip install -r requirements.txt
 ```
 
-## Sec2: data generation
-
-```shell
-python data_generator/gen_rgb_obj_coordinates.py --title gen_data --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model BatchCPHeatmapModel --environment NpPhysicsEnv --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
-# generate by training
-python main.py --title gen_data_v4 --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchSeparateTowerModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --save_dataset --ns_dataset_p NSDataset_v4 --object_list ALL --data DatasetForce --batch-size 1 train
-
-# genearte by testing
-python main.py --title test_all_joint_training --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --ns_dataset_p NSDatasetV6 --save_dataset --reload DatasetForce/pretrained/trained_weights/all_obj_end2end.pytar test
-```
-
 ## Sec3: training/testing
 
 1. Training command of LukeForce:
 
 ```shell
+# train the seperate NS/FP model.
+python main.py --title v6_seperate_loss_use_ns --gpu-ids 3 --environment PhysicsEnv --model SeperateFPAndNS --dataset DatasetWAugmentation --loss SeperateFPNSLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 0.01 --set-gpu-ids-in-env --break-batch 32 --use_gt_cp train
 # train the joint ns model.
-srun --gres=gpu:2 -w SH-IDC1-10-198-6-147 python main.py --title v3_ns_joint_two_losses_with_img --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 train
+srun --gres=gpu:2 -w SH-IDC1-10-198-6-147 python main.py --title v5_loss1_only_no_scale --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 0.0 train
 
-# update two losses at the same time
-srun --gres=gpu:2 -w SH-IDC1-10-198-6-147 python main.py --title v2_ns_joint_two_losses_with_img --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 --joint_two_losses train
+# update two losses at the same time (use vis_grad to visualize gradients)
+srun --gres=gpu:2 -w SH-IDC1-10-198-6-147 python main.py --title v5_use_gt_cp_1_plus_1 --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 --joint_two_losses --use_gt_cp --vis_grad train
 
 # train the full model (original, no batch processing)
 python main.py --title original_training --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 
 # train the full model with batch processing
 python main.py --title batch_joint_training_v3 --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchSeparateTowerModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
-
-# train the full model with attention, deprecating
-python main.py --title attention_v1 --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --environment NpPhysicsEnv --model BatchCPHeatmapModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 
 # only predict contact point.
 python main.py --title train_cp_prediction --batch-size 1 --workers 10 --gpu-ids 0 --number_of_cp 5 --model NoForceOnlyCPModel --dataset DatasetWAugmentation --loss CPPredictionLoss --object_list ALL --break-batch 1 --data DatasetForce train
@@ -69,25 +57,12 @@ python main.py --title train_cp_prediction --batch-size 1 --workers 10 --gpu-ids
 python main.py --title save_gt_force --batch-size 1 --workers 10 --gpu-ids 1 --number_of_cp 5 --model NoModelGTForceBaseline --dataset BaselineForceDatasetWAugmentation --loss KeypointProjectionLoss --object_list ALL --break-batch 1 --data DatasetForce --predicted_cp_adr DatasetForce/gtforce_train.json savegtforce
 ```
 
-2. Training command of NS:
+2. Testing command:
 
 ```shell
-# train the base model of NS.
-python main.py --title base_ns_model --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000  --save_frequency 30 --ns_dataset_p NSDatasetV5 --obj_name 019_pitcher_base train
+# test joint ns model.
+python main.py --title loss1onlycheck --reload loss1onlycheck.pytar --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 --vis test
 
-# residual change
-python main.py --title base_ns_model --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000 --ns_dataset_p NSDatasetV6 --obj_name 019_pitcher_base --residual --train_num 50 train
-
-# lstm model
-python main.py --title lstm_model --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSLSTMModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000 --ns_dataset_p NSDatasetV6 --obj_name 019_pitcher_base --residual --lstm --train_num 100 train
-
-# predict speed
-python main.py --title old_train_ns_v6 --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 32 --break-batch 1 --epochs 1000  --save_frequency 30 --ns_dataset_p NSDataset_v4 --base-lr 0.0001 --obj_name toy_airplane train
-```
-
-3. Testing command:
-
-```shell
 # test the base model of NS.
 python main.py --title train_ns_v3 --reload model_state.pytar --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 1 --break-batch 1 --epochs 1000  --save_frequency 30  --ns_dataset_p NSDatasetV5 --vis test
 
@@ -105,6 +80,7 @@ python3 main.py --title test_all_joint_training --sequence_length 10 --gpu-ids 0
 ```shell
 # test model
 python debug/test_model.py --title debug_model  --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model BatchCPHeatmapModel --dataset BatchDatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
+
 # test trained model
 python debug/test_model.py --title test_all_joint_training --sequence_length 10 --gpu-ids 0 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --reload DatasetForce/trained_weights/all_obj_end2end.pytar test
 # test physics env (no multiprocessing)

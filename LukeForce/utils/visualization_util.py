@@ -2,21 +2,85 @@ import os
 import imageio
 import torch
 import torch.nn.functional as F
-from utils.environment_util import EnvState
-from utils.environment_util import NpEnvState
+from utils.environment_util import EnvState, NoGradEnvState
 import numpy as np
 from utils.projection_utils import put_keypoints_on_image, get_set_of_vertices_projection
+from solvers import metrics
 
 
-def vis_state(vis_env, obj_name, position, rotation, image_name, save_folder, verbose=True):
-    vis_env.update_object_transformations(object_state=NpEnvState(object_name=obj_name, position=position,
-                                                                    rotation=rotation), object_num=None)
-    rendered_image = vis_env.get_rgb()
-    fp = save_image_to_disk(rendered_image.transpose(1, 0, 2), save_name=image_name, save_dir=save_folder,
+# implemented by zelin
+def load_image_from_disk(full_path=None, width_first=True):
+    return_image = imageio.imread(full_path)  # H * W * 3, e.g. 1080 * 1920 * 3
+    if width_first:
+        return_image = return_image.transpose(1, 0, 2)  # W * H * 3, e.g. 1920 * 1080 * 3
+    return return_image
+
+
+def save_image_to_disk(image_array, save_name, save_dir, full_path=None, verbose=False):
+    if '.jpg' not in save_name and '.jpeg' not in save_name and '.png' not in save_name:
+        save_name += '.jpg'
+    if full_path is None:
+        full_path = os.path.join(save_dir, save_name)
+    image_array = image_array.transpose(1, 0, 2)
+    imageio.imwrite(full_path, image_array)
+    if verbose:
+        print("Image saved at", full_path)
+    return full_path
+
+
+def vis_state(vis_env, obj_name, position, rotation, full_image, image_name, save_folder,
+              verbose=True, env_render=False, set_color=None):
+    if type(full_image) == str:
+        full_image = load_image_from_disk(full_image, width_first=True)
+    # vis_env: multi_object wrapped
+    if env_render:
+        cur_env = vis_env.get_env_by_obj_name(object_name=obj_name)
+        cur_env.update_object_transformations(object_state=NoGradEnvState(object_name=obj_name, position=position,
+                                                                          rotation=rotation), object_num=None)
+        vis_img = cur_env.get_rgb().transpose(1, 0, 2)  # H * W -> W * H
+    else:
+        vis_img = draw_mesh_on_image(multi_obj_env=vis_env, image=full_image, obj_name=obj_name, position=position,
+                                     rotation=rotation, set_color=set_color)
+        vis_img = vis_img.transpose(1, 0, 2)
+    # vis_img should be width first.
+    fp = save_image_to_disk(vis_img, save_name=image_name, save_dir=save_folder,
                             verbose=verbose)
     return fp
 
 
+def vis_two_states(vis_env, obj_name, pos1, rot1, pos2, rot2, full_image, image_name,
+                   save_folder, verbose=True, color1=None, color2=None, kp_tensor=None):
+    if type(full_image) == str:
+        full_image = load_image_from_disk(full_image, width_first=True)  # W * H
+    vis_img = draw_mesh_on_image(multi_obj_env=vis_env, image=full_image, obj_name=obj_name, position=pos1,
+                                 rotation=rot1, set_color=color1)
+    vis_img = vis_img.transpose(1, 0, 2)
+    vis_img = draw_mesh_on_image(multi_obj_env=vis_env, image=vis_img, obj_name=obj_name, position=pos2,
+                                 rotation=rot2, set_color=color2)
+    vis_img = vis_img.transpose(1, 0, 2)
+    if verbose:
+        print("*************************")
+    fp = save_image_to_disk(vis_img, save_name=image_name, save_dir=save_folder,
+                            verbose=verbose)
+    if kp_tensor is not None:
+        metrics.compare_two_states(pos1=pos1, rot1=rot1, pos2=pos2, rot2=rot2, object_name=obj_name, kp_tensor=kp_tensor,
+                                   verbose=verbose)
+        if verbose:
+            print("*************************")
+    return fp
+
+
+def draw_mesh_on_image(multi_obj_env, image, obj_name, position, rotation, set_color=None):
+    image = image + 0.  # copy image
+    env = multi_obj_env.get_env_by_obj_name(object_name=obj_name)
+    set_of_points = get_set_of_vertices_projection(env, position, rotation)
+    image = put_keypoints_on_image(image, set_of_points, SIZE_OF_DOT=2, coloring=False, set_color=set_color)
+    image = np.array(image)
+    # H * W
+    return image
+
+
+# original functions
 def save_image_list_to_gif(image_list, gif_name, gif_dir):
     gif_adr = os.path.join(gif_dir, gif_name)
 
@@ -31,24 +95,6 @@ def save_image_list_to_gif(image_list, gif_name, gif_dir):
         os.makedirs(gif_dir)
     imageio.mimsave(gif_adr, (pallet * 255.).type(torch.uint8), format='GIF', duration=1 / 5)
     print('Saved result in ', gif_adr)
-
-
-def load_image_from_disk(full_path=None):
-    return_image = imageio.imread(full_path)  # H * W * 3, e.g. 1080 * 1920 * 3
-    return_image = return_image.transpose(1, 0, 2)  # W * H * 3, e.g. 1920 * 1080 * 3
-    return return_image
-
-
-def save_image_to_disk(image_array, save_name, save_dir, full_path=None, verbose=False):
-    if '.jpg' not in save_name and '.jpeg' not in save_name and '.png' not in save_name:
-        save_name += '.jpg'
-    if full_path is None:
-        full_path = os.path.join(save_dir, save_name)
-    image_array = image_array.transpose(1, 0, 2)
-    imageio.imwrite(full_path, image_array)
-    if verbose:
-        print("Image saved at", full_path)
-    return full_path
 
 
 def get_image_list_for_forces(full_output_position, full_output_rotation, force_applied, gt_contact_point, rgb_image,

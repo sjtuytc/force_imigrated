@@ -55,7 +55,7 @@ class MLPNS(nn.Module):
         cp_feature = self.cp_encoder(contact_points)
         fused_feature = torch.cat([force_feature, state_feature, cp_feature], dim=-1)
         predict_residual_state = self.force_decoder(fused_feature)
-        predict_residual_state[:, :3] /= 10
+        # predict_residual_state[:, :3] /= 10
         return state_tensor + predict_residual_state
 
 
@@ -88,7 +88,7 @@ class NSWithImageFeature(nn.Module):
         img_feature = self.image_encoder(image_feature)
         fused_feature = torch.cat([force_feature, state_feature, cp_feature, img_feature], dim=-1)
         predict_residual_state = self.force_decoder(fused_feature)
-        predict_residual_state[:, :3] /= 10
+        # predict_residual_state[:, :3] /= 10
         return state_tensor + predict_residual_state
 
 

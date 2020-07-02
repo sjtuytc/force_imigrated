@@ -106,7 +106,7 @@ def parse_args(log_info=True, save_log=True):
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--number_of_cp', default=5, type=int)
     parser.add_argument('--manual_epoch', default=None, type=int)
-    parser.add_argument('--tensorboard_log_freq', default=1000, type=int)
+    parser.add_argument('--tensorboard_log_freq', default=100, type=int)
     parser.add_argument('--sequence_length', default=10, type=int)
     parser.add_argument('--force_multiplier', default=4, type=float)
     parser.add_argument('--force_h', default=0.01, type=float)
@@ -132,17 +132,21 @@ def parse_args(log_info=True, save_log=True):
     parser.add_argument('--set-gpu-ids-in-env', action='store_true')
     parser.add_argument('--vis', action='store_true', help='visualization test results.')
 
-    # options for creating NS dataset and training NS
-    parser.add_argument('--ns', action='store_true', help="training or testing neural simulator")
-    parser.add_argument('--save_dataset', action='store_true')
-    parser.add_argument('--predict_speed', action='store_true')
-    parser.add_argument('--lstm', action='store_true')
+    # ns added
+    # parser.add_argument('--ns', action='store_true', help="training or testing neural simulator")
+    # parser.add_argument('--save_dataset', action='store_true')
+    # parser.add_argument('--predict_speed', action='store_true')
+    parser.add_argument('--use_gt_cp', action='store_true', help='use gt contact points.')
+    # parser.add_argument('--lstm', action='store_true')
     parser.add_argument('--residual', action='store_true', help='predict residual')
+    parser.add_argument('--train_res', action='store_true', help='train resnet feature')
+    parser.add_argument('--vis_grad', action='store_true', help='visualize gradients')
     parser.add_argument('--dataset_size', default=1000000, type=int)
     parser.add_argument('--save_freq', default=1000, type=int, help="frequency to save dataset")
-    parser.add_argument('--balance', default=10, type=float)  # deprecating
+    # parser.add_argument('--balance', default=10, type=float)  # deprecating
     parser.add_argument('--loss1_w', default=1.0, type=float)
     parser.add_argument('--loss2_w', default=1.0, type=float)
+    parser.add_argument('--cp_loss_w', default=1.0, type=float)
     parser.add_argument('--joint_two_losses', action='store_true', help='optimize two losses jointly')
     parser.add_argument('--train_num', default=10000000000, type=int)
     parser.add_argument('--ns_dataset_p', default='NSDataset_v1', type=str, help='path to save created NS dataset.')
@@ -183,8 +187,8 @@ def parse_args(log_info=True, save_log=True):
         os.makedirs(args.save, exist_ok=True)
         if args.vis:
             os.makedirs(args.vis_f, exist_ok=True)
-        if args.save_dataset:
-            os.makedirs(args.ns_dataset_p, exist_ok=True)
+        # if args.save_dataset:
+        #     os.makedirs(args.ns_dataset_p, exist_ok=True)
         setup_logging(os.path.join(args.save, 'log.txt'), True)
 
     if args.object_list in [['ALL']]:

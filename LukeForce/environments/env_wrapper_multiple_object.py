@@ -6,8 +6,6 @@ class MultipleObjectWrapper:
 
     def __init__(self, environment, render, gravity, debug, number_of_cp, gpu_ids, fps, force_multiplier,
                  force_h, state_h, qualitative_size, object_paths):
-        # if environment is None:
-        #     environment = NpPhysicsEnv
         self.list_of_envs = {}
         self.environment_type, self.number_of_cp, self.force_h, self.state_h, self.qualitative_size = \
             environment, number_of_cp, force_h, state_h, qualitative_size

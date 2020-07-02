@@ -5,9 +5,10 @@ import torch
 from . import metrics
 import tqdm
 import numpy as np
-from utils.visualization_util import vis_state
+from utils.visualization_util import vis_two_states, vis_state
 from utils.tensor_utils import dict_of_tensor_to_cuda
 from utils.data_io import save_into_pkl
+from IPython import embed
 
 
 def test_one_epoch(model, loss, data_loader, epoch, args):
@@ -49,36 +50,54 @@ def test_one_epoch(model, loss, data_loader, epoch, args):
             # Forward pass
             model_output, target_output = model(input_dict, target_dict)
             target_output['loss1_or_loss2'] = None
-            if args.save_dataset:
-                # input_dict: ['rgb', 'initial_position', 'initial_rotation', 'initial_keypoint', 'object_name',
-                # 'contact_points', 'timestamps']
-                # target_dict: ['keypoints', 'position', 'rotation', 'contact_points', 'object_name']
-                # model_output: ['keypoints', 'rotation', 'position', 'force_success_flag', 'force_applied',
-                # 'force_direction', 'contact_points']
-                cur_result = {'initial_position': input_dict['initial_position'].cpu().tolist()[0],
-                              'initial_rotation': input_dict['initial_rotation'].cpu().tolist()[0],
-                              'object_name': input_dict['object_name'][0],
-                              'model_contact_points': model_output['contact_points'].cpu().tolist()[0],
-                              'timestamps': input_dict['timestamps'], 'model_position': model_output['position'].cpu().tolist()[0],
-                              'model_rotation': model_output['rotation'].cpu().tolist()[0],
-                              'force_applied': model_output['force_applied'].cpu().tolist()[0]}
-                all_results.append(cur_result)
-                if i % args.save_freq == 0 or i == len(data_loader) - 1:
-                    save_into_pkl(all_results, folder=args.ns_dataset_p, name='all_data', verbose=True)
+            # if args.save_dataset:  # deprecating.
+            #     # input_dict: ['rgb', 'initial_position', 'initial_rotation', 'initial_keypoint', 'object_name',
+            #     # 'contact_points', 'timestamps']
+            #     # target_dict: ['keypoints', 'position', 'rotation', 'contact_points', 'object_name']
+            #     # model_output: ['keypoints', 'rotation', 'position', 'force_success_flag', 'force_applied',
+            #     # 'force_direction', 'contact_points']
+            #     cur_result = {'initial_position': input_dict['initial_position'].cpu().tolist()[0],
+            #                   'initial_rotation': input_dict['initial_rotation'].cpu().tolist()[0],
+            #                   'object_name': input_dict['object_name'][0],
+            #                   'model_contact_points': model_output['contact_points'].cpu().tolist()[0],
+            #                   'timestamps': input_dict['timestamps'], 'model_position': model_output['position'].cpu().tolist()[0],
+            #                   'model_rotation': model_output['rotation'].cpu().tolist()[0],
+            #                   'force_applied': model_output['force_applied'].cpu().tolist()[0]}
+            #     all_results.append(cur_result)
+            #     if i % args.save_freq == 0 or i == len(data_loader) - 1:
+            #         save_into_pkl(all_results, folder=args.ns_dataset_p, name='all_data', verbose=True)
             forward_pass_time_meter.update((time.time() - before_forward_pass_time) / batch_size, batch_size)
 
             before_loss_time = time.time()
             loss_output = loss(model_output, target_output)
+            vis_cur_iter = args.vis and i < 20
+            if vis_cur_iter:
+                init_pos, init_rot, obj_name, init_image = input_dict['initial_position'][0].cpu(), input_dict['initial_rotation'][0].cpu(), \
+                                                           target_output['object_name'][0], input_dict['image_paths'][0][0]
+                vis_state(vis_env=args.vis_env, obj_name=obj_name, position=init_pos, rotation=init_rot, full_image=init_image,
+                          image_name=args.title + '_init_' + str(i), save_folder=args.vis_f, set_color=3, verbose=True)
 
-            if args.vis and i < 20:
-                m_s, t_s = model_output['denorm_state_tensor'][0], target_output['denorm_state_tensor'][0]
-                msp, msr = np.array(m_s[:3].cpu()), np.array(m_s[3:7].cpu())
-                tsp, tsr = np.array(t_s[:3].cpu()), np.array(t_s[3:7].cpu())
-                vis_state(vis_env=args.vis_env, obj_name=args.obj_name, position=msp, rotation=msr,
-                          image_name='model_' + str(i), save_folder=args.vis_f, verbose=True)
-                vis_state(vis_env=args.vis_env, obj_name=args.obj_name, position=tsp, rotation=tsr,
-                          image_name='target_' + str(i), save_folder=args.vis_f, verbose=True)
-
+                def vis_fn(seq_id):
+                    phy_pos, phy_rot = model_output['phy_position'][0][seq_id].cpu(), model_output['phy_rotation'][0][seq_id].cpu()
+                    ns_pos, ns_rot = model_output['ns_position'][0][seq_id].cpu(), model_output['ns_rotation'][0][seq_id].cpu()
+                    gt_pos, gt_rot = target_output['position'][0][seq_id].cpu(), target_output['rotation'][0][seq_id].cpu()
+                    full_image_p = input_dict['image_paths'][seq_id + 1][0]
+                    ns_color, phy_color, gt_color = 0, 1, 2  # green, blue, orange
+                    vis_two_states(vis_env=args.vis_env, obj_name=obj_name, pos1=phy_pos, rot1=phy_rot, pos2=gt_pos, rot2=gt_rot,
+                                   full_image=full_image_p, image_name=args.title + '_phy_gt_' + str(i) + '_' + str(seq_id),
+                                   save_folder=args.vis_f, color1=phy_color, color2=gt_color,
+                                   kp_tensor=model.all_objects_keypoint_tensor[obj_name], verbose=True)
+                    vis_two_states(vis_env=args.vis_env, obj_name=obj_name, pos1=ns_pos, rot1=ns_rot, pos2=gt_pos, rot2=gt_rot,
+                                   full_image=full_image_p, image_name=args.title + '_ns_gt_' + str(i) + '_' + str(seq_id),
+                                   save_folder=args.vis_f, color1=ns_color, color2=gt_color,
+                                   kp_tensor=model.all_objects_keypoint_tensor[obj_name], verbose=True)
+                    vis_two_states(vis_env=args.vis_env, obj_name=obj_name, pos1=phy_pos, rot1=phy_rot, pos2=ns_pos, rot2=ns_rot,
+                                   full_image=full_image_p, image_name=args.title + '_phy_ns_' + str(i) + '_' + str(seq_id),
+                                   save_folder=args.vis_f, color1=phy_color, color2=ns_color,
+                                   kp_tensor=model.all_objects_keypoint_tensor[obj_name], verbose=True)
+                vis_fn(1)
+                vis_fn(2)
+                vis_fn(3)
             loss_time_meter.update((time.time() - before_loss_time) / batch_size, batch_size)
             if args.render:
                 print('loss', loss.local_loss_dict)
@@ -128,35 +147,36 @@ def test_one_epoch(model, loss, data_loader, epoch, args):
 
             timestamp = time.time()
 
-        result_log_dict = {
-            'Time/Batch': batch_time_meter.avg,
-            'Time/Data': data_time_meter.avg,
-            'Time/Metrics': metrics_time_meter.avg,
-            'Time/backward': backward_time_meter.avg,
-            'Time/forward': forward_pass_time_meter.avg,
-            'Time/loss': loss_time_meter.avg,
-            'Loss': loss_meter.avg,
-        }
+            result_log_dict = {
+                'Time/Batch': batch_time_meter.avg,
+                'Time/Data': data_time_meter.avg,
+                'Time/Metrics': metrics_time_meter.avg,
+                'Time/backward': backward_time_meter.avg,
+                'Time/forward': forward_pass_time_meter.avg,
+                'Time/loss': loss_time_meter.avg,
+                'Loss': loss_meter.avg,
+            }
 
-        for loss_name in loss_detail_meter:
-            result_log_dict['Loss/' + loss_name] = loss_detail_meter[loss_name].avg
+            for loss_name in loss_detail_meter:
+                result_log_dict['Loss/' + loss_name] = loss_detail_meter[loss_name].avg
 
-        with torch.no_grad():
-            for ac in accuracy_metric:
-                result_log_dict[type(ac).__name__] = ac.average()
-        args.logging_module.log(result_log_dict, epoch, add_to_keys=add_to_keys + '_Summary')
+            with torch.no_grad():
+                for ac in accuracy_metric:
+                    result_log_dict[type(ac).__name__] = ac.average()
+            args.logging_module.log(result_log_dict, epoch, add_to_keys=add_to_keys + '_Summary')
 
-        testing_summary = ('Epoch: [{}] -- TESTING SUMMARY\t'.format(epoch) +
-                           'Time {batch_time.sum:.2f}   Data {data_time.sum:.2f}  Loss {loss.avg:.6f}   '
-                           '{accuracy_report}'.format(batch_time=batch_time_meter, data_time=data_time_meter,
-                                                      loss=loss_meter,
-                                                      accuracy_report='\n'.join([ac.final_report()
-                                                                                 for ac in accuracy_metric])))
+            testing_summary = ('Epoch: [{}] -- TESTING SUMMARY\t'.format(epoch) +
+                               'Time {batch_time.sum:.2f};   Data {data_time.sum:.2f};  Loss {loss.avg:.6f};   '
+                               '{accuracy_report}'.format(batch_time=batch_time_meter, data_time=data_time_meter,
+                                                          loss=loss_meter,
+                                                          accuracy_report='\n'.join([ac.final_report()
+                                                                                     for ac in accuracy_metric])))
 
-    logging.info(testing_summary)
-    logging.info('Full test result is at {}'.format(
-        os.path.join(args.save, 'test.log')))
-
-    with open(os.path.join(args.save, 'test.log'), 'a') as fp:
-        fp.write('{}\n'.format(testing_summary))
+            if (i % 50 == 0 and args.mode == 'test') or i == len(data_loader) - 1 or vis_cur_iter:
+                logging.info(testing_summary)
+                logging.info('Full test result is at {}'.format(
+                    os.path.join(args.save, 'test.log')))
+                if i == len(data_loader) - 1:  # only save at the end of this epoch
+                    with open(os.path.join(args.save, 'test.log'), 'a') as fp:
+                        fp.write('{}\n'.format(testing_summary))
     return loss_meter.avg

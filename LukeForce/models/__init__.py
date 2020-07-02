@@ -11,6 +11,7 @@ from .batch_cp_heatmap_model import BatchCPHeatmapModel
 from .ns_base_model import NSBaseModel
 from .ns_lstm_model import NSLSTMModel
 from .joint_ns import JointNS
+from .seperate_fp_and_ns import SeperateFPAndNS
 
 __all__ = [
     'ImageAndCPInputKPOutModel',
@@ -24,4 +25,5 @@ __all__ = [
     'NSBaseModel',
     'NSLSTMModel',
     'JointNS',
+    'SeperateFPAndNS',
 ]

@@ -163,6 +163,7 @@ class DatasetWAugmentation(data.Dataset):
         all_translations = []
         all_images = []
         all_keypoints = []
+        all_image_paths = []
 
         time_to_clip_ind_image_adr_this_object = self.time_to_clip_ind_image_adr[obj_name]
         time_to_obj_state_fps_this_object = self.time_to_obj_state_fps[obj_name]
@@ -172,6 +173,7 @@ class DatasetWAugmentation(data.Dataset):
             position = scale_position(this_item_dict['position'], obj_name)
             rotation = this_item_dict['rotation']
             real_img_path = os.path.join(self.root_dir, image_path)
+            all_image_paths.append(real_img_path)
             rgb = self.load_and_resize(real_img_path)
             all_rotations.append(rotation)
             all_translations.append(position)
@@ -190,6 +192,7 @@ class DatasetWAugmentation(data.Dataset):
 
         input = {
             'rgb': all_images,
+            'image_paths': all_image_paths,
             'initial_position': all_translations[0],
             'initial_rotation': all_rotations[0],
             'initial_keypoint': all_keypoints[0],

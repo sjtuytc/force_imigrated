@@ -45,6 +45,7 @@ def project_points(points, rotation_mat, translation_mat, camera_intr, distortio
     ypp = yp * radial + p1 * (r2 + 2 * yp ** 2) + 2. * p2 * xp * yp
     u = camera_intr[0, 0] * xpp + camera_intr[0, 2]
     v = camera_intr[1, 1] * ypp + camera_intr[1, 2]
+    # Note: the results are in format (x, y) in image coordinates.
     if use_np:
         return np.stack([u, v], axis=-1)
     else:
@@ -71,12 +72,10 @@ def np_reverse_translation_transformation(translation_mat, object_name):
     return translation_mat
 
 
-def put_a_dot_on_image(image, point, color, SIZE_OF_DOT, exchange_xy=True):
+def put_a_dot_on_image(image, point, color, SIZE_OF_DOT):
     np_version = type(point) == np.ndarray
     if np_version:
         point = point.astype(np.int) + 0 #Copy point
-        if exchange_xy:
-            point = np.array([point[1], point[0]])
         h, w, c = image.shape
         ch_first = False
 
@@ -132,9 +131,10 @@ def convert_to_color(kp_ind):
     return all_colors[kp_ind]
 
 
-def put_keypoints_on_image(image, keypoints, SIZE_OF_DOT=5, coloring=True, exchange_x_y=True):
+def put_keypoints_on_image(image, keypoints, SIZE_OF_DOT=5, coloring=True, set_color=None):
     np_version = type(keypoints) == np.ndarray
     if np_version:
+        raise DeprecationWarning("Np version is deprecating.")
         image = image + 0. #Copy image
         w, h, c = image.shape
         if w == 3:
@@ -142,6 +142,7 @@ def put_keypoints_on_image(image, keypoints, SIZE_OF_DOT=5, coloring=True, excha
         image_shape = np.array([w, h]).astype(np.float)
         image_size = np.array(DEFAULT_IMAGE_SIZE)
         converted_keypoints = keypoints / image_size * image_shape
+        image = image.transpose(1, 0, 2)
         for kp_ind in range(converted_keypoints.shape[0]):
             if coloring:
                 color = convert_to_color(kp_ind % 10)
@@ -149,23 +150,30 @@ def put_keypoints_on_image(image, keypoints, SIZE_OF_DOT=5, coloring=True, excha
                 color = convert_to_color(1)
             color = np.array(color)
             if image.max() > 1.0:
-                color *= 255
-            put_a_dot_on_image(image, converted_keypoints[kp_ind], color, SIZE_OF_DOT, exchange_xy=exchange_x_y)
+                color = tuple([ele * 255 for ele in color])
+            put_a_dot_on_image(image, converted_keypoints[kp_ind], color, SIZE_OF_DOT)
     else:
         image = image + 0. #Copy image
         w, h, c = image.shape
         if w == 3:
             c, w, h = image.shape
+        assert w >= h, "The image should be width * height, e.g. 1920 * 1080"
         image_shape = torch.Tensor([w, h]).float()
         image_size = DEFAULT_IMAGE_SIZE
         if image_size.device != keypoints.device:
             image_size = image_size.to(keypoints.device)
         converted_keypoints = keypoints / image_size * image_shape
+        image = image.transpose(1, 0, 2)
         for kp_ind in range(converted_keypoints.shape[0]):
-            if coloring:
-                color = convert_to_color(kp_ind % 10)
+            if set_color is not None:
+                color = convert_to_color(set_color)
             else:
-                color = convert_to_color(1)
+                if coloring:
+                    color = convert_to_color(kp_ind % 10)
+                else:
+                    color = convert_to_color(1)
+            if image.max() > 1.0:
+                color = tuple([ele * 255 for ele in color])
             put_a_dot_on_image(image, converted_keypoints[kp_ind], color, SIZE_OF_DOT)
     return image
 
@@ -182,7 +190,11 @@ def get_set_of_vertices_projection(environment, resulting_positions, resulting_r
     set_of_points = environment.vertex_points
     if set_of_points.device != resulting_positions.device:
         set_of_points = set_of_points.to(resulting_positions.device)
-    set_of_points = (set_of_points + environment.center_of_mass) / OBJECT_TO_SCALE[environment.object_name]
+    if environment.center_of_mass.device != resulting_positions.device:
+        center_of_mass = environment.center_of_mass.to(resulting_positions.device)
+    else:
+        center_of_mass = environment.center_of_mass
+    set_of_points = (set_of_points + center_of_mass) / OBJECT_TO_SCALE[environment.object_name]
     # translation_mat = reverse_center_of_mass_translation(resulting_positions, environment)
     # translation_mat = resulting_positions
     translation_mat = reverse_translation_transformation(resulting_positions, environment.object_name)
@@ -210,7 +222,7 @@ def get_keypoint_projection(object_name, resulting_positions, resulting_rotation
     return torch.stack(all_projections, dim=0)
 
 
-# implemented by Zelin
+# implemented by Zelin, deprecating.
 def np_get_keypoint_projection(object_name, position, rotation, keypoints):
     position, rotation, keypoints = np.array(position), np.array(rotation), np.array(keypoints)
 

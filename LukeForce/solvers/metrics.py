@@ -2,6 +2,9 @@ import torch
 from utils.quaternion_util import get_quaternion_distance
 from utils.custom_quaternion import quaternion_to_euler_angle
 from utils.constants import DEFAULT_IMAGE_SIZE
+from utils.projection_utils import get_keypoint_projection
+from solvers.loss_fns import cal_kp_loss
+
 
 class AverageMeter(object):
 
@@ -163,13 +166,6 @@ class ObjRotationMetric(BaseMetric):
         return 'ObjRotationMetric:{}'.format(self.meter['overall'].avg).replace('\n', '; ')
 
 
-def l2_dist(output, target):
-    last_dim = output.shape[-1]
-    output = output.view(-1, last_dim)
-    target = target.view(-1, last_dim)
-    return torch.nn.PairwiseDistance()(output, target).mean()
-
-
 class ObjPositionMetric(BaseMetric):
 
     def __init__(self, args):
@@ -205,6 +201,13 @@ class ObjPositionMetric(BaseMetric):
         return 'ObjPositionMetric:{}'.format(self.meter['overall'].avg).replace('\n', '; ')
 
 
+def l2_dist(output, target):
+    last_dim = output.shape[-1]
+    output = output.view(-1, last_dim)
+    target = target.view(-1, last_dim)
+    return torch.nn.PairwiseDistance()(output, target).mean()
+
+
 def cal_kp_dis(output_kp, target_kp):
     # Note: this is different from original implementation.
     kp_range = int(1.5 * max(DEFAULT_IMAGE_SIZE.cpu().tolist()))
@@ -221,6 +224,24 @@ def cal_kp_dis(output_kp, target_kp):
     else:
         keypoint_loss = None
     return keypoint_loss
+
+
+def cal_euler_diffrence(quat_a, quat_b):
+    euler_a, euler_b = quaternion_to_euler_angle(quat_a), quaternion_to_euler_angle(quat_b)
+    diff_result = torch.abs(torch.Tensor(euler_a) - torch.Tensor(euler_b)).mean()
+    return diff_result
+
+
+def project_and_cal_kp_dis(pos1, rot1, pos2, rot2, obj_name, kp_tensors):
+    kp1 = get_keypoint_projection(object_name=obj_name, resulting_positions=pos1.unsqueeze(0).unsqueeze(0),
+                                  resulting_rotations=rot1.unsqueeze(0).unsqueeze(0), keypoints=kp_tensors)
+    kp2 = get_keypoint_projection(object_name=obj_name, resulting_positions=pos2.unsqueeze(0).unsqueeze(0),
+                                  resulting_rotations=rot2.unsqueeze(0).unsqueeze(0), keypoints=kp_tensors)
+    kp_dis = cal_kp_dis(kp1, kp2)
+    kp_loss_fn = torch.nn.SmoothL1Loss()
+    kp_loss = cal_kp_loss(kp1, kp2, kp_loss_fn)
+
+    return kp_dis, kp_loss
 
 
 class ObjKeypointMetric(BaseMetric):
@@ -343,12 +364,6 @@ class ForcePredictionMetric(BaseMetric):
         return 'ForcePredictionMetric:{}'.format((self.meter['overall'].avg)).replace('\n', '; ')
 
 
-def cal_euler_diffrence(quat_a, quat_b):
-    euler_a, euler_b = quaternion_to_euler_angle(quat_a), quaternion_to_euler_angle(quat_b)
-    diff_result = torch.abs(torch.Tensor(euler_a) - torch.Tensor(euler_b)).mean()
-    return diff_result
-
-
 class StateMetric(BaseMetric):
     # deprecating, used in old ns version.
     def __init__(self, args):
@@ -404,3 +419,14 @@ class StateMetric(BaseMetric):
         report_str += 'Omega Dis: {:.3f}; '.format(self.meter['avg_omega'].avg)
         report_str += 'Vel Dis: {:.3f}.'.format(self.meter['avg_speed'].avg)
         return report_str
+
+
+def compare_two_states(pos1, rot1, pos2, rot2, object_name, kp_tensor, verbose=True):
+    position_dis = l2_dist(pos1, pos2)
+    rotation_dis = cal_euler_diffrence(rot1, rot2)
+    kp_dis, kp_loss = project_and_cal_kp_dis(pos1, rot1, pos2, rot2, object_name, kp_tensor)
+
+    if verbose:
+        print("position dis:", position_dis, "; rotation dis:", rotation_dis, "; kp dis:", kp_dis, "; kp loss:",
+              kp_loss, " .")
+    return position_dis, rotation_dis, kp_dis, kp_loss

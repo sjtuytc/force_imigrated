@@ -5,10 +5,10 @@ import torch
 from . import metrics
 import tqdm
 from utils.tensor_utils import dict_of_tensor_to_cuda
-from IPython import embed
 
 
 def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
+    vis_grad = args.vis_grad
     add_to_keys = 'Train'
 
     # Prepare model and optimizer
@@ -30,6 +30,9 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
     forward_pass_time_meter = metrics.AverageMeter()
     loss_time_meter = metrics.AverageMeter()
     loss_meter = metrics.AverageMeter()
+    loss1_grad_meter = metrics.AverageMeter()
+    loss2_grad_meter = metrics.AverageMeter()
+    loss_cp_grad_meter = metrics.AverageMeter()
     accuracy_metric = [m(args) for m in model.metric]
     loss_detail_meter = {loss_name: metrics.AverageMeter() for loss_name in loss.local_loss_dict}
 
@@ -70,7 +73,12 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
                 else:
                     optimizer.step()
                     optimizer.zero_grad()
-
+                if vis_grad:  # check grads and then clear them
+                    cp_grad, loss1_grad, loss2_grad = loss.seperate_loss_backward(
+                        input_dict=input_dict, target_dict=target_dict, optimizer=model.get_optim(), model_obj=model)
+                    loss_cp_grad_meter.update(cp_grad, 1)
+                    loss1_grad_meter.update(loss1_grad, 1)
+                    loss2_grad_meter.update(loss2_grad, 1)
             # Bookkeeping on loss, accuracy, and batch time
             loss_meter.update(loss_output.detach(), batch_size)
             before_metrics_time = time.time()
@@ -101,7 +109,10 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
                     'Time/loss': loss_time_meter.avg,
                     'Loss': loss_meter.avg,
                 }
-
+                if vis_grad:
+                    result_log_dict['Grad/loss1'] = loss1_grad_meter.avg
+                    result_log_dict['Grad/loss2'] = loss2_grad_meter.avg
+                    result_log_dict['Grad/loss_cp'] = loss_cp_grad_meter.avg
                 for loss_name in loss_detail_meter:
                     result_log_dict['Loss/' + loss_name] = loss_detail_meter[loss_name].avg
 
@@ -138,8 +149,8 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
             training_summary = ""
         if i % 50 == 0 or i == len(data_loader) - 1:
             logging.info(training_summary)
-            logging.info('Full train result is at {}'.format(
-                os.path.join(args.save, 'train.log')))
-            with open(os.path.join(args.save, 'train.log'), 'a') as fp:
-                fp.write('{}\n'.format(training_summary))
+            logging.info('Full train result is at {}'.format(os.path.join(args.save, 'train.log')))
+            if i == len(data_loader) - 1:  # only save at the end of this epoch
+                with open(os.path.join(args.save, 'train.log'), 'a') as fp:
+                    fp.write('{}\n'.format(training_summary))
     return loss_meter.avg

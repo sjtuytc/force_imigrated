@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from utils.constants import DEFAULT_IMAGE_SIZE
-from IPython import embed
 
 __all__ = [
     'KeypointProjectionLoss',
@@ -10,6 +9,7 @@ __all__ = [
     'ForceRegressionLoss',
     'StateEstimationLoss',
     'JointNSProjectionLoss',
+    'SeperateFPNSLoss',
 ]
 
 variables = locals()
@@ -33,7 +33,7 @@ class BasicLossFunction(nn.Module):
     def calc_and_update_total_loss(self, loss_dict, batch_size):
         total = 0
         for k in loss_dict:
-            self._local_loss_dict[k] = (loss_dict[k], batch_size)
+            self._local_loss_dict[k] = (loss_dict[k] * self.weights_for_each_loss[k], batch_size)  # different from Luke
             total += loss_dict[k] * self.weights_for_each_loss[k]
         return total
 
@@ -224,25 +224,35 @@ class JointNSProjectionLoss(BasicLossFunction):
             'loss2_force_grouding': None,
             'loss_cp_prediction': None,
         }
+        self.loss1_w, self.loss2_w, self.cp_loss_w = args.loss1_w, args.loss2_w, args.cp_loss_w
+        self.use_gt_cp = args.use_gt_cp
+        if self.use_gt_cp:
+            self.cp_loss_w = 0
         self.weights_for_each_loss = {
-            'loss1_state_grounding': args.loss1_w,
-            'loss2_force_grouding': args.loss2_w,
-            'loss_cp_prediction': 5.,
+            'loss1_state_grounding': self.loss1_w,
+            'loss2_force_grouding': self.loss2_w,
+            'loss_cp_prediction': self.cp_loss_w,
         }
         self.loss1_or_loss2 = None
         if args.loss1_w < 0.00001:
             self.loss1_or_loss2 = False   # update loss2 only
         elif args.loss2_w < 0.00001:
             self.loss1_or_loss2 = True    # update loss1 only
+        if args.joint_two_losses:
+            self.loss1_or_loss2 = None
+        self.joint_two_losses = args.joint_two_losses
 
     def forward(self, output, target):
         loss1_or_loss2 = target['loss1_or_loss2']
         if self.loss1_or_loss2 is not None:
             loss1_or_loss2 = self.loss1_or_loss2
+        if self.joint_two_losses:
+            loss1_or_loss2 = None
         loss_cp_prediction_value = self.loss_cp_prediction(output, target)
         gt_kps = target['keypoints']
         phy_kps = output['phy_keypoints']
         ns_kps = output['ns_keypoints']
+
         if loss1_or_loss2 is None:
             loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.loss_keypoint_loss,
                                                       default_img_size=self.default_image_size)
@@ -267,7 +277,103 @@ class JointNSProjectionLoss(BasicLossFunction):
                 'loss2_force_grouding': loss2_force_grounding_value,
                 'loss_cp_prediction': loss_cp_prediction_value,
             }
+        # summarize losses
+        batch_size = output['contact_points'].shape[0]
+        total_loss = self.calc_and_update_total_loss(loss_dict, batch_size)
 
+        return total_loss
+
+    def seperate_loss_backward(self, input_dict, target_dict, optimizer, model_obj):
+        if not self.use_gt_cp:
+            model_output, target_output = model_obj(input_dict, target_dict)
+            loss_cp_prediction_value = self.loss_cp_prediction(model_output, target_output)
+            loss_cp_prediction_value *= self.cp_loss_w
+            loss_cp_prediction_value.backward()
+            cp_grad = model_obj.grad_vis
+            optimizer.zero_grad()
+        else:
+            cp_grad = 0
+        model_output, target_output = model_obj(input_dict, target_dict)
+        gt_kps = target_output['keypoints']
+        ns_kps = model_output['ns_keypoints']
+        loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.loss_keypoint_loss,
+                                                  default_img_size=self.default_image_size)
+        loss1_state_grounding_value *= self.loss1_w
+        loss1_state_grounding_value.backward()
+        loss1_grad = model_obj.grad_vis
+        optimizer.zero_grad()
+        model_output, target_output = model_obj(input_dict, target_dict)
+        phy_kps = model_output['phy_keypoints']
+        ns_kps = model_output['ns_keypoints']
+        loss2_force_grounding_value = cal_kp_loss(ns_kps, phy_kps, self.loss_keypoint_loss,
+                                                  default_img_size=self.default_image_size)
+        loss2_force_grounding_value *= self.loss2_w
+        loss2_force_grounding_value.backward()
+        loss2_grad = model_obj.grad_vis
+        optimizer.zero_grad()
+        return cp_grad, loss1_grad, loss2_grad
+
+
+class SeperateFPNSLoss(BasicLossFunction):
+    def __init__(self, args):
+        super(SeperateFPNSLoss, self).__init__()
+        self.loss_keypoint_loss = nn.SmoothL1Loss()
+        self.default_image_size = DEFAULT_IMAGE_SIZE
+        self.loss_cp_prediction = CPPredictionLoss(args)
+        self._local_loss_dict = {
+            'loss1_state_grounding': None,
+            'loss2_force_grouding': None,
+            'loss_cp_prediction': None,
+        }
+        self.loss1_w, self.loss2_w, self.cp_loss_w = args.loss1_w, args.loss2_w, args.cp_loss_w
+        self.use_gt_cp = args.use_gt_cp
+        if self.use_gt_cp:
+            self.cp_loss_w = 0
+        self.weights_for_each_loss = {
+            'loss1_state_grounding': self.loss1_w,
+            'loss2_force_grouding': self.loss2_w,
+            'loss_cp_prediction': self.cp_loss_w,
+        }
+        self.loss1_or_loss2 = None
+        if args.loss1_w < 0.00001:
+            self.loss1_or_loss2 = False   # update loss2 only
+        elif args.loss2_w < 0.00001:
+            self.loss1_or_loss2 = True    # update loss1 only
+        if args.joint_two_losses:
+            raise ValueError("Joint two losses is adopted already!")
+
+    def forward(self, output, target):
+        loss1_or_loss2 = target['loss1_or_loss2']
+        if self.loss1_or_loss2 is not None:
+            loss1_or_loss2 = self.loss1_or_loss2
+        loss_cp_prediction_value = self.loss_cp_prediction(output, target)
+        gt_kps = target['keypoints']
+        phy_kps = output['phy_keypoints']
+        ns_kps = output['ns_keypoints']
+        if loss1_or_loss2 is None:  # used in testing mode
+            loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.loss_keypoint_loss,
+                                                      default_img_size=self.default_image_size)
+            loss2_force_grounding_value = cal_kp_loss(ns_kps, phy_kps, self.loss_keypoint_loss,
+                                                      default_img_size=self.default_image_size)
+            loss_dict = {
+                'loss1_state_grounding': loss1_state_grounding_value,
+                'loss2_force_grouding': loss2_force_grounding_value,
+                'loss_cp_prediction': loss_cp_prediction_value,
+            }
+        elif loss1_or_loss2:  # select loss1
+            loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.loss_keypoint_loss,
+                                                      default_img_size=self.default_image_size)
+            loss_dict = {
+                'loss1_state_grounding': loss1_state_grounding_value,
+                'loss_cp_prediction': loss_cp_prediction_value,
+            }
+        else:
+            loss2_force_grounding_value = cal_kp_loss(ns_kps, phy_kps, self.loss_keypoint_loss,
+                                                      default_img_size=self.default_image_size)
+            loss_dict = {
+                'loss2_force_grouding': loss2_force_grounding_value,
+                'loss_cp_prediction': loss_cp_prediction_value,
+            }
         # summarize losses
         batch_size = output['contact_points'].shape[0]
         total_loss = self.calc_and_update_total_loss(loss_dict, batch_size)

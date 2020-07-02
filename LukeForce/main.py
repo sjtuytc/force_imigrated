@@ -12,50 +12,52 @@ from solvers import train, test, save_gt_force
 
 from utils.arg_parser import parse_args
 from datasets.ns_dataset import NSDataset
-from environments.np_physics_env import NpPhysicsEnv
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
 
 
 def get_dataset(args):
     print("Create training and validation dataset.")
-    if args.ns:
-        train_dataset = NSDataset(obj_name=args.obj_name, root_dir=args.ns_dataset_p, train_val_rate=0.9, all_sequence=args.lstm,
-                                  train_num=args.train_num, train=True)
-        val_dataset = NSDataset(obj_name=args.obj_name, root_dir=args.ns_dataset_p, train_val_rate=0.9, all_sequence=args.lstm,
-                                train_num=args.train_num, train=False, data_statistics=train_dataset.data_statistics)
-        if train_dataset.collate_fn is None:
-            train_loader = torch.utils.data.DataLoader(
-                train_dataset, batch_size=args.batch_size,
-                shuffle=True, num_workers=args.workers, pin_memory=False)
-            val_loader = torch.utils.data.DataLoader(
-                val_dataset, batch_size=args.batch_size,
-                shuffle=True, num_workers=args.workers, pin_memory=False)
-        else:
-            train_loader = torch.utils.data.DataLoader(
-                train_dataset, batch_size=args.batch_size,
-                shuffle=True, num_workers=args.workers, collate_fn=train_dataset.collate_fn, pin_memory=False)
-            val_loader = torch.utils.data.DataLoader(
-                val_dataset, batch_size=args.batch_size,
-                shuffle=True, num_workers=args.workers, collate_fn=train_dataset.collate_fn, pin_memory=False)
-    else:
-        train_dataset = args.dataset(args, environment=None, train=True)
-        val_dataset = args.dataset(args, environment=train_dataset.environment, train=False)
-        train_loader = torch.utils.data.DataLoader(
-            train_dataset, batch_size=args.batch_size,
-            shuffle=True, num_workers=args.workers, pin_memory=False)
-        val_loader = torch.utils.data.DataLoader(
-            val_dataset, batch_size=args.batch_size,
-            shuffle=True, num_workers=args.workers, pin_memory=False)
-
+    # if args.ns:
+    #     train_dataset = NSDataset(obj_name=args.obj_name, root_dir=args.ns_dataset_p, train_val_rate=0.9, all_sequence=args.lstm,
+    #                               train_num=args.train_num, train=True)
+    #     val_dataset = NSDataset(obj_name=args.obj_name, root_dir=args.ns_dataset_p, train_val_rate=0.9, all_sequence=args.lstm,
+    #                             train_num=args.train_num, train=False, data_statistics=train_dataset.data_statistics)
+    #     if train_dataset.collate_fn is None:
+    #         train_loader = torch.utils.data.DataLoader(
+    #             train_dataset, batch_size=args.batch_size,
+    #             shuffle=True, num_workers=args.workers, pin_memory=False)
+    #         val_loader = torch.utils.data.DataLoader(
+    #             val_dataset, batch_size=args.batch_size,
+    #             shuffle=True, num_workers=args.workers, pin_memory=False)
+    #     else:
+    #         train_loader = torch.utils.data.DataLoader(
+    #             train_dataset, batch_size=args.batch_size,
+    #             shuffle=True, num_workers=args.workers, collate_fn=train_dataset.collate_fn, pin_memory=False)
+    #         val_loader = torch.utils.data.DataLoader(
+    #             val_dataset, batch_size=args.batch_size,
+    #             shuffle=True, num_workers=args.workers, collate_fn=train_dataset.collate_fn, pin_memory=False)
+    # else:
+    train_dataset = args.dataset(args, environment=None, train=True)
+    val_dataset = args.dataset(args, environment=train_dataset.environment, train=False)
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=args.batch_size,
+        shuffle=True, num_workers=args.workers, pin_memory=False)
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=args.batch_size,
+        shuffle=True, num_workers=args.workers, pin_memory=False)
 
     # get visualize environment
     if args.vis:
-        object_path = os.path.join(args.data, 'objects_16k', args.obj_name, 'google_16k', 'textured.urdf')
-        args.vis_env = NpPhysicsEnv(render=args.render, object_name=args.obj_name, object_path=object_path, gravity=args.gravity,
-                                    debug=args.debug, number_of_cp=args.number_of_cp, fps=args.fps, force_multiplier=args.force_multiplier,
-                                    force_h=args.force_h, state_h=args.state_h, qualitative_size=args.qualitative_size, workers=args.workers,
-                                    gpu_ids=args.gpu_ids)
+        from environments.env_wrapper_multiple_object import MultipleObjectWrapper
+        from environments.physics_env import PhysicsEnv
+        object_paths = {obj: os.path.join(args.data, 'objects_16k', obj, 'google_16k', 'textured.urdf')
+                        for obj in args.object_list}
+        args.vis_env = MultipleObjectWrapper(
+            environment=PhysicsEnv, render=args.render, gravity=args.gravity, debug=args.debug,
+            number_of_cp=args.number_of_cp, gpu_ids=args.gpu_ids, fps=args.fps,
+            force_multiplier=args.force_multiplier, force_h=args.force_h,
+            state_h=args.state_h, qualitative_size=args.qualitative_size, object_paths=object_paths)
         args.vis_env.reset()
     return train_loader, val_loader
 
