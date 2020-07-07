@@ -123,17 +123,17 @@ def main():
     model, loss, restarting_epoch = get_model_and_loss(args)
     print("Model construction finished!")
 
-    lowest_train_loss = np.inf
+    lowest_val_error = np.inf
     if args.mode == 'train':
         optimizer = model.optimizer()
         for i in range(restarting_epoch, args.epochs):
             print('Epoch[', i, ']')
-            train_loss = train.train_one_epoch(model, loss, optimizer, train_loader, i + 1, args)
+            train_err = train.train_one_epoch(model, loss, optimizer, train_loader, i + 1, args)
             if args.save_frequency != -1 and i % args.save_frequency == 0:
                 torch.save(model.state_dict(), os.path.join(args.save, 'model_state_{:02d}.pytar'.format(i + 1)))
-            test_loss = test.test_one_epoch(model, loss, val_loader, i + 1, args)
-            if train_loss < lowest_train_loss:
-                lowest_train_loss = train_loss
+            val_err = test.test_one_epoch(model, loss, val_loader, i + 1, args)
+            if val_err < lowest_val_error:
+                lowest_val_error = val_err
                 torch.save(model.state_dict(), os.path.join(args.save, 'best_model.pytar'.format(i + 1)))
     elif args.mode == 'test' or args.mode == 'testtrain':
         if args.mode == 'testtrain' or args.save_dataset:

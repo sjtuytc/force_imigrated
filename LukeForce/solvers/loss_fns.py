@@ -156,6 +156,14 @@ def cal_kp_loss(output_keypoints, target_keypoints, loss_fn, default_img_size=DE
     return keypoint_projection
 
 
+def cal_state_loss(o_p, o_r, o_kp, t_p, t_r, t_kp, loss_fn, state_or_kp, default_img_size=DEFAULT_IMAGE_SIZE):
+    if state_or_kp:
+        state_loss = loss_fn(o_p, t_p) + loss_fn(o_r, t_r)
+    else:
+        state_loss = cal_kp_loss(o_kp, t_kp, loss_fn, default_img_size)
+    return state_loss
+
+
 class KeypointProjectionLoss(BasicLossFunction):
     def __init__(self, args):
         super(KeypointProjectionLoss, self).__init__()
@@ -216,7 +224,7 @@ class KPProjectionCPPredictionLoss(BasicLossFunction):
 class JointNSProjectionLoss(BasicLossFunction):
     def __init__(self, args):
         super(JointNSProjectionLoss, self).__init__()
-        self.loss_keypoint_loss = nn.SmoothL1Loss()
+        self.l1_loss = nn.SmoothL1Loss()
         self.default_image_size = DEFAULT_IMAGE_SIZE
         self.loss_cp_prediction = CPPredictionLoss(args)
         self._local_loss_dict = {
@@ -254,9 +262,9 @@ class JointNSProjectionLoss(BasicLossFunction):
         ns_kps = output['ns_keypoints']
 
         if loss1_or_loss2 is None:
-            loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.loss_keypoint_loss,
+            loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.l1_loss,
                                                       default_img_size=self.default_image_size)
-            loss2_force_grounding_value = cal_kp_loss(ns_kps, phy_kps, self.loss_keypoint_loss,
+            loss2_force_grounding_value = cal_kp_loss(ns_kps, phy_kps, self.l1_loss,
                                                       default_img_size=self.default_image_size)
             loss_dict = {
                 'loss1_state_grounding': loss1_state_grounding_value,
@@ -264,14 +272,14 @@ class JointNSProjectionLoss(BasicLossFunction):
                 'loss_cp_prediction': loss_cp_prediction_value,
             }
         elif loss1_or_loss2:  # select loss1
-            loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.loss_keypoint_loss,
+            loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.l1_loss,
                                                       default_img_size=self.default_image_size)
             loss_dict = {
                 'loss1_state_grounding': loss1_state_grounding_value,
                 'loss_cp_prediction': loss_cp_prediction_value,
             }
         else:
-            loss2_force_grounding_value = cal_kp_loss(ns_kps, phy_kps, self.loss_keypoint_loss,
+            loss2_force_grounding_value = cal_kp_loss(ns_kps, phy_kps, self.l1_loss,
                                                       default_img_size=self.default_image_size)
             loss_dict = {
                 'loss2_force_grouding': loss2_force_grounding_value,
@@ -296,7 +304,7 @@ class JointNSProjectionLoss(BasicLossFunction):
         model_output, target_output = model_obj(input_dict, target_dict)
         gt_kps = target_output['keypoints']
         ns_kps = model_output['ns_keypoints']
-        loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.loss_keypoint_loss,
+        loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.l1_loss,
                                                   default_img_size=self.default_image_size)
         loss1_state_grounding_value *= self.loss1_w
         loss1_state_grounding_value.backward()
@@ -305,7 +313,7 @@ class JointNSProjectionLoss(BasicLossFunction):
         model_output, target_output = model_obj(input_dict, target_dict)
         phy_kps = model_output['phy_keypoints']
         ns_kps = model_output['ns_keypoints']
-        loss2_force_grounding_value = cal_kp_loss(ns_kps, phy_kps, self.loss_keypoint_loss,
+        loss2_force_grounding_value = cal_kp_loss(ns_kps, phy_kps, self.l1_loss,
                                                   default_img_size=self.default_image_size)
         loss2_force_grounding_value *= self.loss2_w
         loss2_force_grounding_value.backward()
@@ -341,35 +349,45 @@ class SeperateFPNSLoss(BasicLossFunction):
             self.loss1_or_loss2 = True    # update loss1 only
         if args.joint_two_losses:
             raise ValueError("Joint two losses is adopted already!")
+        self.state_or_kp = False
 
     def forward(self, output, target):
         loss1_or_loss2 = target['loss1_or_loss2']
         if self.loss1_or_loss2 is not None:
             loss1_or_loss2 = self.loss1_or_loss2
         loss_cp_prediction_value = self.loss_cp_prediction(output, target)
-        gt_kps = target['keypoints']
-        phy_kps = output['phy_keypoints']
-        ns_kps = output['ns_keypoints']
+        gt_kps, gt_p, gt_r = target['keypoints'], target['position'], target['rotation']
+        phy_kps, phy_p, phy_r = output['phy_keypoints'], output['phy_position'], output['phy_rotation']
+        ns_kps, ns_p, ns_r = output['ns_keypoints'], output['ns_position'], output['ns_rotation']
+
         if loss1_or_loss2 is None:  # used in testing mode
-            loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.loss_keypoint_loss,
-                                                      default_img_size=self.default_image_size)
-            loss2_force_grounding_value = cal_kp_loss(ns_kps, phy_kps, self.loss_keypoint_loss,
-                                                      default_img_size=self.default_image_size)
+            loss1_state_grounding_value = cal_state_loss(ns_p, ns_r, ns_kps, gt_p, gt_r, gt_kps,
+                                                         self.loss_keypoint_loss,
+                                                         state_or_kp=self.state_or_kp,
+                                                         default_img_size=self.default_image_size)
+            loss2_force_grounding_value = cal_state_loss(ns_p, ns_r, ns_kps, phy_p, phy_r, phy_kps,
+                                                         self.loss_keypoint_loss,
+                                                         state_or_kp=self.state_or_kp,
+                                                         default_img_size=self.default_image_size)
             loss_dict = {
                 'loss1_state_grounding': loss1_state_grounding_value,
                 'loss2_force_grouding': loss2_force_grounding_value,
                 'loss_cp_prediction': loss_cp_prediction_value,
             }
         elif loss1_or_loss2:  # select loss1
-            loss1_state_grounding_value = cal_kp_loss(ns_kps, gt_kps, self.loss_keypoint_loss,
-                                                      default_img_size=self.default_image_size)
+            loss1_state_grounding_value = cal_state_loss(ns_p, ns_r, ns_kps, gt_p, gt_r, gt_kps,
+                                                         self.loss_keypoint_loss,
+                                                         state_or_kp=self.state_or_kp,
+                                                         default_img_size=self.default_image_size)
             loss_dict = {
                 'loss1_state_grounding': loss1_state_grounding_value,
                 'loss_cp_prediction': loss_cp_prediction_value,
             }
         else:
-            loss2_force_grounding_value = cal_kp_loss(ns_kps, phy_kps, self.loss_keypoint_loss,
-                                                      default_img_size=self.default_image_size)
+            loss2_force_grounding_value = cal_state_loss(ns_p, ns_r, ns_kps, phy_p, phy_r, phy_kps,
+                                                         self.loss_keypoint_loss,
+                                                         state_or_kp=self.state_or_kp,
+                                                         default_img_size=self.default_image_size)
             loss_dict = {
                 'loss2_force_grouding': loss2_force_grounding_value,
                 'loss_cp_prediction': loss_cp_prediction_value,

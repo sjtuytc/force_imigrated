@@ -2,7 +2,7 @@ import torch
 import time
 import torch.nn as nn
 from .base_model import BaseModel
-from .ns_base_model import MLPNS, NSWithImageFeature
+from .ns_modules import MLPNS, NSWithImageFeature
 from utils.net_util import input_embedding_net, combine_block_w_do
 
 from torchvision.models.resnet import resnet18

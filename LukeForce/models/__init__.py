@@ -8,7 +8,7 @@ from .gt_cp_predict_init_pose_and_force import PredictInitPoseAndForce
 from .baseline_regress_force import BaselineRegressForce
 from .no_model_gt_calculator import NoModelGTForceBaseline
 from .batch_cp_heatmap_model import BatchCPHeatmapModel
-from .ns_base_model import NSBaseModel
+from .ns_modules import NSBaseModel
 from .ns_lstm_model import NSLSTMModel
 from .joint_ns import JointNS
 from .seperate_fp_and_ns import SeperateFPAndNS

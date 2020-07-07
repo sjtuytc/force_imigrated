@@ -60,7 +60,7 @@ class MLPNS(nn.Module):
 
 
 class NSWithImageFeature(nn.Module):
-    def __init__(self, hidden_size=64, layer_norm=True, image_feature_dim=225):
+    def __init__(self, hidden_size=64, layer_norm=True, image_feature_dim=225, norm_position=True):
         super(NSWithImageFeature, self).__init__()
         self.force_feature_size, self.state_feature_size, self.cp_feature_size, self.img_feature_size = \
             hidden_size, hidden_size, hidden_size, hidden_size
@@ -77,6 +77,7 @@ class NSWithImageFeature(nn.Module):
                                   self.img_feature_size
         self.force_decoder = MlpLayer(input_d=total_dim_before_decode, output_d=self.state_tensor_dim,
                                       layer_norm=layer_norm)
+        self.norm_position = norm_position
 
     def forward(self, state_tensor, force_tensor, contact_points, image_feature):
         batch_size = force_tensor.shape[0]
@@ -88,8 +89,50 @@ class NSWithImageFeature(nn.Module):
         img_feature = self.image_encoder(image_feature)
         fused_feature = torch.cat([force_feature, state_feature, cp_feature, img_feature], dim=-1)
         predict_residual_state = self.force_decoder(fused_feature)
-        # predict_residual_state[:, :3] /= 10
+        if self.norm_position:
+            predict_residual_state[:, :3] /= 10
         return state_tensor + predict_residual_state
+
+
+class NSLSTM(nn.Module):
+    def __init__(self, hidden_size=64, layer_norm=True, image_feature_dim=225, norm_position=True):
+        super(NSLSTM, self).__init__()
+        self.force_feature_size, self.state_feature_size, self.cp_feature_size, self.img_feature_size = \
+            hidden_size, hidden_size, hidden_size, hidden_size
+        self.state_tensor_dim, self.force_tensor_dim, self.cp_tensor_dim, self.img_feature_dim = \
+            7, 15, 15, image_feature_dim
+        self.num_layers = 3
+        self.state_encoder = MlpLayer(input_d=self.state_tensor_dim, output_d=self.state_feature_size,
+                                      layer_norm=layer_norm)
+        self.force_encoder = MlpLayer(input_d=self.force_tensor_dim, output_d=self.force_feature_size,
+                                      layer_norm=layer_norm)
+        self.cp_encoder = MlpLayer(input_d=self.cp_tensor_dim, output_d=self.cp_feature_size, layer_norm=layer_norm)
+        self.image_encoder = MlpLayer(input_d=self.img_feature_dim, output_d=self.img_feature_size,
+                                      layer_norm=layer_norm)
+        self.state_lstm = nn.LSTM(input_size=self.state_feature_size + self.force_feature_size,
+                                  hidden_size=hidden_size, batch_first=True, num_layers=self.num_layers)
+        self.state_decoder = MlpLayer(input_d=hidden_size, output_d=self.state_tensor_dim, layer_norm=layer_norm)
+        self.norm_position = norm_position
+
+    def forward(self, state_tensor, force_tensor, contact_points, image_feature, last_hidden, last_cell):
+        batch_size = force_tensor.shape[0]
+        force_tensor, contact_points, state_tensor = force_tensor.reshape(batch_size, -1), \
+                                                     contact_points.reshape(batch_size, -1), \
+                                                     state_tensor.reshape(batch_size, -1)
+        force_feature = self.force_encoder(force_tensor)
+        state_feature = self.state_encoder(state_tensor)
+        fused_input_feature = torch.cat([force_feature, state_feature], dim=-1).unsqueeze(0)
+        if last_hidden is None or last_cell is None:
+            cp_feature = self.cp_encoder(contact_points).unsqueeze(0).repeat(self.num_layers, 1, 1)  # bs * d
+            img_feature = self.image_encoder(image_feature).unsqueeze(0).repeat(self.num_layers, 1, 1)  # bs * d
+            last_hidden, last_cell = cp_feature, img_feature  # todo: validate this
+        output_state_feature, (last_hidden, last_cell) = self.state_lstm(fused_input_feature,
+                                                                           (last_hidden, last_cell))
+        output_state_feature = output_state_feature.squeeze(1)
+        predicted_state = self.state_decoder(output_state_feature)
+        if self.norm_position:
+            predicted_state[:, :3] /= 10
+        return state_tensor + predicted_state, last_hidden, last_cell
 
 
 def get_denorm_state_tensor(state_ten, stat):

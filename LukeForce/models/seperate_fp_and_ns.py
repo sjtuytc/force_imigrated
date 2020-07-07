@@ -1,8 +1,9 @@
 import torch
 import time
+import random
 import torch.nn as nn
 from .base_model import BaseModel
-from .ns_base_model import MLPNS, NSWithImageFeature
+from .ns_modules import MLPNS, NSWithImageFeature, NSLSTM
 from utils.net_util import input_embedding_net, combine_block_w_do
 
 from torchvision.models.resnet import resnet18
@@ -150,6 +151,7 @@ class ForcePredictor(nn.Module):
         force_predictions = []
         for seq_ind in range(self.sequence_length - 1):
             contact_point_as_input = contact_points_prediction.view(1, 3 * 5)
+            # todo: try to remove initial state tensor.
             initial_state_and_cp = torch.cat([initial_state_tensor, contact_point_as_input], dim=-1)
             initial_frame_feature = self.state_embed(initial_state_and_cp)
             current_frame_feature = embedded_sequence_force[:, seq_ind + 1]
@@ -165,10 +167,11 @@ class NeuralForceSimulator(nn.Module):
         super(NeuralForceSimulator, self).__init__()
         self.clean_force = True
         # neural force simulator
-        self.use_image_feature = True
+        self.only_first_img_feature = True
         self.vis_grad = args.vis_grad
         self.train_res = args.train_res or self.vis_grad
         self.hidden_size = 512
+        self.image_feature_dim = 512
         self.num_layers = 3
         self.sequence_length = args.sequence_length
         self.object_feature_size = 512
@@ -178,10 +181,14 @@ class NeuralForceSimulator(nn.Module):
         del self.feature_extractor.fc
         if not self.train_res:
             self.feature_extractor.eval()
-        if not self.use_image_feature:
-            self.one_ns_layer = MLPNS(hidden_size=512, layer_norm=False)
+        self.use_lstm = True
+        self.norm_position = False
+        if self.use_lstm:
+            self.one_ns_layer = NSLSTM(hidden_size=self.hidden_size, layer_norm=False,
+                                       image_feature_dim=self.image_feature_dim, norm_position=self.norm_position)
         else:
-            self.one_ns_layer = NSWithImageFeature(hidden_size=512, layer_norm=False, image_feature_dim=512)
+            self.one_ns_layer = NSWithImageFeature(hidden_size=self.hidden_size, layer_norm=False,
+                                                   image_feature_dim=self.image_feature_dim, norm_position=self.norm_position)
         self.image_embed = combine_block_w_do(512, 64, args.dropout_ratio)
         input_object_embed_size = torch.Tensor([3 + 4, 100, self.object_feature_size])
         self.input_object_embed = input_embedding_net(input_object_embed_size.long().tolist(), dropout=args.dropout_ratio)
@@ -193,6 +200,10 @@ class NeuralForceSimulator(nn.Module):
         if args.gpu_ids != -1:
             for obj, val in self.all_objects_keypoint_tensor.items():
                 self.all_objects_keypoint_tensor[obj] = val.cuda()
+        self.ns_ratio, self.phy_ratio, self.gt_ratio = 1, 1, 1
+        total_r = self.ns_ratio + self.phy_ratio + self.gt_ratio
+        self.ns_ratio, self.phy_ratio, self.gt_ratio = self.ns_ratio / total_r, self.phy_ratio / total_r, \
+                                                       self.gt_ratio / total_r
 
     def forward(self, input_dict, target, contact_points_prediction, force_predictions):
         initial_position = input_dict['initial_position']
@@ -204,7 +215,8 @@ class NeuralForceSimulator(nn.Module):
         object_name = input_dict['object_name']
         assert len(object_name) == 1  # only support one object
         object_name = object_name[0]
-        image_features = forward_resnet_feature(x=rgb, feature_extractor=self.feature_extractor, train_res=self.train_res)
+        image_features = forward_resnet_feature(x=rgb, feature_extractor=self.feature_extractor,
+                                                train_res=self.train_res)
 
         # hooks to vis gradients
         if self.vis_grad:
@@ -231,22 +243,25 @@ class NeuralForceSimulator(nn.Module):
                                                     clear_velocity=True)
 
         phy_positions, phy_rotations, ns_positions, ns_rotations, final_forces = [], [], [], [], []
+        ns_hidden, ns_cell = None, None
         for seq_ind in range(self.sequence_length - 1):
             contact_point_as_input = contact_points_prediction.view(1, 3 * 5)
-            current_frame_feature = ns_sequence_features[:, seq_ind + 1]
+            if self.only_first_img_feature:
+                current_frame_feature = ns_sequence_features[:, 0]
+            else:
+                current_frame_feature = ns_sequence_features[:, seq_ind + 1]
 
             # step physical simulator
             cur_force_pred = force_predictions[seq_ind]
-            ns_env_state = nograd_envstate_from_tensor(object_name=object_name, env_tensor=ns_state_tensor[0],
-                                                       clear_velocity=True)
-            phy_env_state, succ_flags, force_locations, force_values = \
+
+            next_phy_env_state, succ_flags, force_locations, force_values = \
                 self.environment.init_location_and_apply_force(forces=cur_force_pred[0].reshape(5, -1),
-                                                               initial_state=ns_env_state,
+                                                               initial_state=phy_env_state,
                                                                list_of_contact_points=contact_point_as_input[0].reshape(5, -1),
                                                                no_grad=True, return_force_value=True)
-            phy_state_tensor = phy_env_state.toTensorCoverName()
-            phy_positions.append(phy_state_tensor[:3])
-            phy_rotations.append(phy_state_tensor[3:7])
+            next_phy_state_tensor = next_phy_env_state.toTensorCoverName()
+            phy_positions.append(next_phy_state_tensor[:3].to(dev))
+            phy_rotations.append(next_phy_state_tensor[3:7].to(dev))
 
             # step neural force simulator
             # cur_obj_ns_layer = self.ns_layer[object_name]
@@ -259,20 +274,39 @@ class NeuralForceSimulator(nn.Module):
             else:
                 cleaned_force, cleaned_cp = cur_force_pred, contact_point_as_input
 
-            if self.use_image_feature:
-                predicted_state_tensor = self.one_ns_layer(ns_state_tensor[:, :7], cleaned_force, cleaned_cp,
-                                                           current_frame_feature)
+            if self.use_lstm:
+                if seq_ind == 0:
+                    ns_hidden, ns_cell = None, None
+                next_ns_state_tensor, ns_hidden, ns_cell = self.one_ns_layer(ns_state_tensor[:, :7], cleaned_force, cleaned_cp,
+                                                                                 current_frame_feature, ns_hidden, ns_cell)
             else:
-                predicted_state_tensor = self.one_ns_layer(ns_state_tensor, cleaned_force, cleaned_cp)
+                next_ns_state_tensor = self.one_ns_layer(ns_state_tensor[:, :7], cleaned_force, cleaned_cp,
+                                                         current_frame_feature)
 
             # collect ns results
-            ns_positions.append(predicted_state_tensor[0][:3])
-            ns_rotations.append(predicted_state_tensor[0][3:7])
+            ns_positions.append(next_ns_state_tensor[0][:3])
+            ns_rotations.append(next_ns_state_tensor[0][3:7])
             final_forces.append(cleaned_force[0])
 
-            # update to next state
-            ns_state_tensor = predicted_state_tensor
-
+            # update neural and physical simulator
+            if seq_ind == self.sequence_length - 2:  # no next state
+                break
+            rand_num = random.random()
+            if 0 <= rand_num < self.ns_ratio:  # update to ns states
+                next_ns_env_state = nograd_envstate_from_tensor(object_name=object_name, env_tensor=next_ns_state_tensor[0],
+                                                                clear_velocity=True)
+                ns_state_tensor = next_ns_state_tensor
+                phy_env_state = next_ns_env_state
+            elif self.ns_ratio <= rand_num < self.ns_ratio + self.phy_ratio:  # update to phy states
+                ns_state_tensor = next_phy_env_state.toTensorCoverName().unsqueeze(0).to(dev)
+                phy_env_state = next_phy_env_state
+            else:  # update to gt states
+                gt_env_state = NoGradEnvState(object_name=object_name, rotation=target['rotation'][0][seq_ind + 1],
+                                              position=target['position'][0][seq_ind + 1],
+                                              velocity=None, omega=None)
+                gt_env_state_tensor = gt_env_state.toTensorCoverName().unsqueeze(0).to(dev)
+                ns_state_tensor = gt_env_state_tensor
+                phy_env_state = gt_env_state
         phy_positions = torch.stack(phy_positions).unsqueeze(0)
         phy_rotations = torch.stack(phy_rotations).unsqueeze(0)
         phy_kps = get_keypoint_projection(object_name, phy_positions, phy_rotations,
@@ -350,10 +384,10 @@ class SeperateFPAndNS(BaseModel):
     def step_optimizer(self, loss1_or_loss2):
         if self.loss1_or_loss2 is not None:
             loss1_or_loss2 = self.loss1_or_loss2
-        if loss1_or_loss2:  # True for update ns, False for update force.
-            self.ns_optim.step()
-        else:
+        if loss1_or_loss2:  # True for update loss1, False for update loss2.
             self.fp_optim.step()
+        else:
+            self.ns_optim.step()
         self.zero_grad()
 
     def set_learning_rate(self, lr):

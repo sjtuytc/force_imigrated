@@ -179,4 +179,4 @@ def test_one_epoch(model, loss, data_loader, epoch, args):
                 if i == len(data_loader) - 1:  # only save at the end of this epoch
                     with open(os.path.join(args.save, 'test.log'), 'a') as fp:
                         fp.write('{}\n'.format(testing_summary))
-    return loss_meter.avg
+    return accuracy_metric[-1].average()['overall'].cpu().tolist()

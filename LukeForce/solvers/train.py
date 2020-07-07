@@ -99,7 +99,7 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
                     continue
                 (loss_val, data_size) = loss_values[loss_name]
                 loss_detail_meter[loss_name].update(loss_val.item(), data_size)
-            if i % args.tensorboard_log_freq == 0:
+            if i % args.tensorboard_log_freq == args.tensorboard_log_freq - 1:
                 result_log_dict = {
                     'Time/Batch': batch_time_meter.avg,
                     'Time/Data': data_time_meter.avg,
@@ -153,4 +153,4 @@ def train_one_epoch(model, loss, optimizer, data_loader, epoch, args):
             if i == len(data_loader) - 1:  # only save at the end of this epoch
                 with open(os.path.join(args.save, 'train.log'), 'a') as fp:
                     fp.write('{}\n'.format(training_summary))
-    return loss_meter.avg
+    return accuracy_metric[-1].average()['overall'].cpu().tolist()
