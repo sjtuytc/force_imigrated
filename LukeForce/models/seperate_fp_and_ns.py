@@ -167,7 +167,7 @@ class NeuralForceSimulator(nn.Module):
         super(NeuralForceSimulator, self).__init__()
         self.clean_force = True
         # neural force simulator
-        self.only_first_img_feature = True
+        self.only_first_img_feature = False
         self.vis_grad = args.vis_grad
         self.train_res = args.train_res or self.vis_grad
         self.hidden_size = 512
@@ -365,6 +365,12 @@ class SeperateFPAndNS(BaseModel):
 
         self.fp = ForcePredictor(args)
         self.ns = NeuralForceSimulator(args=args)
+
+        # deprecating
+        self.all_objects_keypoint_tensor = get_all_objects_keypoint_tensors(args.data)
+        if args.gpu_ids != -1:
+            for obj, val in self.all_objects_keypoint_tensor.items():
+                self.all_objects_keypoint_tensor[obj] = val.cuda()
 
     def loss(self, args):
         return self.loss_function(args)

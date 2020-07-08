@@ -216,13 +216,14 @@ def cal_kp_dis(output_kp, target_kp):
         target_kp = target_kp.to(output_kp.device)
     output_kp = output_kp.clamp(-kp_range, kp_range)
     target_kp = target_kp.clamp(-kp_range, kp_range)
-    mask = target_kp <= 1e-10
-    not_masked = ~ (mask.sum(dim=-1) > 0)
-    if not_masked.sum().item() > 0:
-        diff = torch.abs(output_kp[not_masked] - target_kp[not_masked]).norm(dim=-1)
-        keypoint_loss = diff.mean()
+    bad_mask = target_kp <= 1e-10
+    good_mask = ~ (bad_mask.sum(dim=-1) > 0)
+    if good_mask.sum().item() > 0:
+        diff = torch.abs(output_kp[good_mask] - target_kp[good_mask]).norm(dim=-1)
+        good_num, bad_num = good_mask.sum().item(), bad_mask.sum().item()
+        keypoint_loss = (diff.mean() * good_num + 1000 * bad_num) / (good_num + bad_num)
     else:
-        keypoint_loss = None
+        keypoint_loss = 100000
     return keypoint_loss
 
 
@@ -321,14 +322,14 @@ class ForceGroundingMetric(BaseMetric):
     def record_output(self, output, target):
         ns_kp = output['ns_keypoints']
         phy_kp = output['phy_keypoints']
-        keypoint_loss = cal_kp_dis(output_kp=ns_kp, target_kp=phy_kp)
-        if keypoint_loss is not None:
+        kp_dis = cal_kp_dis(output_kp=ns_kp, target_kp=phy_kp)
+        if kp_dis is not None:
             batch_size = 1
             object_name = target['object_name']
             assert len(object_name) == 1
             object_name = object_name[0]
-            self.meter[object_name].update(keypoint_loss, batch_size)
-            self.meter['overall'].update(keypoint_loss, batch_size)
+            self.meter[object_name].update(kp_dis, batch_size)
+            self.meter['overall'].update(kp_dis, batch_size)
 
     def report(self):
         return 'ForceGroundingMetric:{}'.format((self.meter['overall'].avg)).replace('\n', '; ')

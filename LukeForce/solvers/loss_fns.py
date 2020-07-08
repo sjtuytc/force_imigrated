@@ -131,7 +131,7 @@ class ForceRegressionLoss(BasicLossFunction):
         return total_loss
 
 
-def cal_kp_loss(output_keypoints, target_keypoints, loss_fn, default_img_size=DEFAULT_IMAGE_SIZE):
+def cal_kp_loss(output_keypoints, target_keypoints, loss_fn, default_img_size=DEFAULT_IMAGE_SIZE, filter_gt=False):
     # note: this is different from original implementation.
     assert output_keypoints.shape == target_keypoints.shape
     if output_keypoints.device != default_img_size.device:
@@ -141,26 +141,29 @@ def cal_kp_loss(output_keypoints, target_keypoints, loss_fn, default_img_size=DE
     output_keypoints = output_keypoints / default_img_size
     target_keypoints = target_keypoints / default_img_size
 
-    # output_keypoints = torch.clamp(output_keypoints, -5, 5)
-    # target_keypoints = torch.clamp(target_keypoints, -5, 5)
-    # the target keypoints should be larger than 1e-10, we allow the output keypoints to be -5 at most.
-    selected_ele_mask = (target_keypoints < 5) * (target_keypoints > 1e-10) * (output_keypoints < 5) * (output_keypoints > -5)
+    output_keypoints = torch.clamp(output_keypoints, -5, 5)
+    target_keypoints = torch.clamp(target_keypoints, -5, 5)
+    if filter_gt:
+        selected_ele_mask = target_keypoints > 1e-10  # restrict the target_kp to be meaningful.
+    else:
+        selected_ele_mask = target_keypoints < 1000000000000
     num_all_ele = target_keypoints.numel()
     num_selected_ele = selected_ele_mask.sum().item()
 
     if num_selected_ele > 0:
         keypoint_projection = loss_fn(output_keypoints[selected_ele_mask], target_keypoints[selected_ele_mask])
-        keypoint_projection = keypoint_projection * float(num_selected_ele) / num_all_ele  # Normalization
+        keypoint_projection = (keypoint_projection * float(num_selected_ele) +
+                               10 * float(num_all_ele - num_selected_ele))/num_all_ele  # Normalization
     else:  # Just a dummy thing
         keypoint_projection = torch.tensor(0.0, requires_grad=True, device=output_keypoints.device)
     return keypoint_projection
 
 
-def cal_state_loss(o_p, o_r, o_kp, t_p, t_r, t_kp, loss_fn, state_or_kp, default_img_size=DEFAULT_IMAGE_SIZE):
+def cal_state_loss(o_p, o_r, o_kp, t_p, t_r, t_kp, loss_fn, state_or_kp, default_img_size=DEFAULT_IMAGE_SIZE, filter_gt=False):
     if state_or_kp:
         state_loss = loss_fn(o_p, t_p) + loss_fn(o_r, t_r)
     else:
-        state_loss = cal_kp_loss(o_kp, t_kp, loss_fn, default_img_size)
+        state_loss = cal_kp_loss(o_kp, t_kp, loss_fn, default_img_size, filter_gt=filter_gt)
     return state_loss
 
 
@@ -364,11 +367,13 @@ class SeperateFPNSLoss(BasicLossFunction):
             loss1_state_grounding_value = cal_state_loss(ns_p, ns_r, ns_kps, gt_p, gt_r, gt_kps,
                                                          self.loss_keypoint_loss,
                                                          state_or_kp=self.state_or_kp,
-                                                         default_img_size=self.default_image_size)
+                                                         default_img_size=self.default_image_size,
+                                                         filter_gt=True)
             loss2_force_grounding_value = cal_state_loss(ns_p, ns_r, ns_kps, phy_p, phy_r, phy_kps,
                                                          self.loss_keypoint_loss,
                                                          state_or_kp=self.state_or_kp,
-                                                         default_img_size=self.default_image_size)
+                                                         default_img_size=self.default_image_size,
+                                                         filter_gt=False)
             loss_dict = {
                 'loss1_state_grounding': loss1_state_grounding_value,
                 'loss2_force_grouding': loss2_force_grounding_value,
@@ -378,7 +383,8 @@ class SeperateFPNSLoss(BasicLossFunction):
             loss1_state_grounding_value = cal_state_loss(ns_p, ns_r, ns_kps, gt_p, gt_r, gt_kps,
                                                          self.loss_keypoint_loss,
                                                          state_or_kp=self.state_or_kp,
-                                                         default_img_size=self.default_image_size)
+                                                         default_img_size=self.default_image_size,
+                                                         filter_gt=True)
             loss_dict = {
                 'loss1_state_grounding': loss1_state_grounding_value,
                 'loss_cp_prediction': loss_cp_prediction_value,
@@ -387,7 +393,8 @@ class SeperateFPNSLoss(BasicLossFunction):
             loss2_force_grounding_value = cal_state_loss(ns_p, ns_r, ns_kps, phy_p, phy_r, phy_kps,
                                                          self.loss_keypoint_loss,
                                                          state_or_kp=self.state_or_kp,
-                                                         default_img_size=self.default_image_size)
+                                                         default_img_size=self.default_image_size,
+                                                         filter_gt=False)
             loss_dict = {
                 'loss2_force_grouding': loss2_force_grounding_value,
                 'loss_cp_prediction': loss_cp_prediction_value,

@@ -5,7 +5,7 @@ import torch
 from . import metrics
 import tqdm
 import numpy as np
-from utils.visualization_util import vis_two_states, vis_state
+from utils.visualization_util import vis_two_states, vis_state, compare_vis, get_image_list_for_object_traj
 from utils.tensor_utils import dict_of_tensor_to_cuda
 from utils.data_io import save_into_pkl
 from IPython import embed
@@ -50,54 +50,18 @@ def test_one_epoch(model, loss, data_loader, epoch, args):
             # Forward pass
             model_output, target_output = model(input_dict, target_dict)
             target_output['loss1_or_loss2'] = None
-            # if args.save_dataset:  # deprecating.
-            #     # input_dict: ['rgb', 'initial_position', 'initial_rotation', 'initial_keypoint', 'object_name',
-            #     # 'contact_points', 'timestamps']
-            #     # target_dict: ['keypoints', 'position', 'rotation', 'contact_points', 'object_name']
-            #     # model_output: ['keypoints', 'rotation', 'position', 'force_success_flag', 'force_applied',
-            #     # 'force_direction', 'contact_points']
-            #     cur_result = {'initial_position': input_dict['initial_position'].cpu().tolist()[0],
-            #                   'initial_rotation': input_dict['initial_rotation'].cpu().tolist()[0],
-            #                   'object_name': input_dict['object_name'][0],
-            #                   'model_contact_points': model_output['contact_points'].cpu().tolist()[0],
-            #                   'timestamps': input_dict['timestamps'], 'model_position': model_output['position'].cpu().tolist()[0],
-            #                   'model_rotation': model_output['rotation'].cpu().tolist()[0],
-            #                   'force_applied': model_output['force_applied'].cpu().tolist()[0]}
-            #     all_results.append(cur_result)
-            #     if i % args.save_freq == 0 or i == len(data_loader) - 1:
-            #         save_into_pkl(all_results, folder=args.ns_dataset_p, name='all_data', verbose=True)
             forward_pass_time_meter.update((time.time() - before_forward_pass_time) / batch_size, batch_size)
 
             before_loss_time = time.time()
             loss_output = loss(model_output, target_output)
             vis_cur_iter = args.vis and i < 20
             if vis_cur_iter:
-                init_pos, init_rot, obj_name, init_image = input_dict['initial_position'][0].cpu(), input_dict['initial_rotation'][0].cpu(), \
-                                                           target_output['object_name'][0], input_dict['image_paths'][0][0]
-                vis_state(vis_env=args.vis_env, obj_name=obj_name, position=init_pos, rotation=init_rot, full_image=init_image,
-                          image_name=args.title + '_init_' + str(i), save_folder=args.vis_f, set_color=3, verbose=True)
-
-                def vis_fn(seq_id):
-                    phy_pos, phy_rot = model_output['phy_position'][0][seq_id].cpu(), model_output['phy_rotation'][0][seq_id].cpu()
-                    ns_pos, ns_rot = model_output['ns_position'][0][seq_id].cpu(), model_output['ns_rotation'][0][seq_id].cpu()
-                    gt_pos, gt_rot = target_output['position'][0][seq_id].cpu(), target_output['rotation'][0][seq_id].cpu()
-                    full_image_p = input_dict['image_paths'][seq_id + 1][0]
-                    ns_color, phy_color, gt_color = 0, 1, 2  # green, blue, orange
-                    vis_two_states(vis_env=args.vis_env, obj_name=obj_name, pos1=phy_pos, rot1=phy_rot, pos2=gt_pos, rot2=gt_rot,
-                                   full_image=full_image_p, image_name=args.title + '_phy_gt_' + str(i) + '_' + str(seq_id),
-                                   save_folder=args.vis_f, color1=phy_color, color2=gt_color,
-                                   kp_tensor=model.all_objects_keypoint_tensor[obj_name], verbose=True)
-                    vis_two_states(vis_env=args.vis_env, obj_name=obj_name, pos1=ns_pos, rot1=ns_rot, pos2=gt_pos, rot2=gt_rot,
-                                   full_image=full_image_p, image_name=args.title + '_ns_gt_' + str(i) + '_' + str(seq_id),
-                                   save_folder=args.vis_f, color1=ns_color, color2=gt_color,
-                                   kp_tensor=model.all_objects_keypoint_tensor[obj_name], verbose=True)
-                    vis_two_states(vis_env=args.vis_env, obj_name=obj_name, pos1=phy_pos, rot1=phy_rot, pos2=ns_pos, rot2=ns_rot,
-                                   full_image=full_image_p, image_name=args.title + '_phy_ns_' + str(i) + '_' + str(seq_id),
-                                   save_folder=args.vis_f, color1=phy_color, color2=ns_color,
-                                   kp_tensor=model.all_objects_keypoint_tensor[obj_name], verbose=True)
-                vis_fn(1)
-                vis_fn(2)
-                vis_fn(3)
+                # compare_vis(args, input_dict, target_output, model_output, model)  # compare visualization
+                get_image_list_for_object_traj(output_rotation=model_output['phy_rotation'], output_position=model_output['phy_position'],
+                                               target_rotation=target_output['rotation'], target_position=target_output['position'],
+                                               gt_contact_point=None, initial_position=input_dict['initial_position'][0],
+                                               initial_rotation=input_dict['initial_rotation'][0], object_name=input_dict['object_name'],
+                                               environment=args.vis_env, input_rgb=input_dict['rgb'])
             loss_time_meter.update((time.time() - before_loss_time) / batch_size, batch_size)
             if args.render:
                 print('loss', loss.local_loss_dict)

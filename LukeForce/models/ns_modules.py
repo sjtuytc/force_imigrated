@@ -109,7 +109,8 @@ class NSLSTM(nn.Module):
         self.cp_encoder = MlpLayer(input_d=self.cp_tensor_dim, output_d=self.cp_feature_size, layer_norm=layer_norm)
         self.image_encoder = MlpLayer(input_d=self.img_feature_dim, output_d=self.img_feature_size,
                                       layer_norm=layer_norm)
-        self.state_lstm = nn.LSTM(input_size=self.state_feature_size + self.force_feature_size,
+        lstm_io_size = self.state_feature_size + self.force_feature_size + self.cp_feature_size + self.img_feature_size
+        self.state_lstm = nn.LSTM(input_size=lstm_io_size,
                                   hidden_size=hidden_size, batch_first=True, num_layers=self.num_layers)
         self.state_decoder = MlpLayer(input_d=hidden_size, output_d=self.state_tensor_dim, layer_norm=layer_norm)
         self.norm_position = norm_position
@@ -121,13 +122,13 @@ class NSLSTM(nn.Module):
                                                      state_tensor.reshape(batch_size, -1)
         force_feature = self.force_encoder(force_tensor)
         state_feature = self.state_encoder(state_tensor)
-        fused_input_feature = torch.cat([force_feature, state_feature], dim=-1).unsqueeze(0)
+        cp_feature = self.cp_encoder(contact_points)
+        img_feature = self.image_encoder(image_feature)
+        fused_input_feature = torch.cat([force_feature, state_feature, cp_feature, img_feature], dim=-1).unsqueeze(0)
         if last_hidden is None or last_cell is None:
-            cp_feature = self.cp_encoder(contact_points).unsqueeze(0).repeat(self.num_layers, 1, 1)  # bs * d
-            img_feature = self.image_encoder(image_feature).unsqueeze(0).repeat(self.num_layers, 1, 1)  # bs * d
-            last_hidden, last_cell = cp_feature, img_feature  # todo: validate this
-        output_state_feature, (last_hidden, last_cell) = self.state_lstm(fused_input_feature,
-                                                                           (last_hidden, last_cell))
+            output_state_feature, (last_hidden, last_cell) = self.state_lstm(fused_input_feature)
+        else:
+            output_state_feature, (last_hidden, last_cell) = self.state_lstm(fused_input_feature, (last_hidden, last_cell))
         output_state_feature = output_state_feature.squeeze(1)
         predicted_state = self.state_decoder(output_state_feature)
         if self.norm_position:

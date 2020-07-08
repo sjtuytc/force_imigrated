@@ -300,3 +300,8 @@ class PhysicsEnv(BaseBulletEnv):
                                            forceObj=force_to_apply * self.force_multiplier, flags=self._p.WORLD_FRAME)
 
         return force_success, force_applied
+
+    def get_rgb_for_position_rotation(self, object_state):
+        self.update_object_transformations(object_state, object_num=None, )
+        rgb_result = self.get_rgb()
+        return rgb_result

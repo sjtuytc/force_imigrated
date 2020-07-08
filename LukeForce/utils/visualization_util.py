@@ -80,6 +80,36 @@ def draw_mesh_on_image(multi_obj_env, image, obj_name, position, rotation, set_c
     return image
 
 
+def compare_vis(args, input_dict, target_output, model_output, model, data_index):
+    init_pos, init_rot, obj_name, init_image = input_dict['initial_position'][0].cpu(), input_dict['initial_rotation'][0].cpu(), \
+                                               target_output['object_name'][0], input_dict['image_paths'][0][0]
+    vis_state(vis_env=args.vis_env, obj_name=obj_name, position=init_pos, rotation=init_rot, full_image=init_image,
+              image_name=args.title + '_init_' + str(data_index), save_folder=args.vis_f, set_color=3, verbose=True)
+
+    def vis_fn(seq_id):
+        phy_pos, phy_rot = model_output['phy_position'][0][seq_id].cpu(), model_output['phy_rotation'][0][seq_id].cpu()
+        ns_pos, ns_rot = model_output['ns_position'][0][seq_id].cpu(), model_output['ns_rotation'][0][seq_id].cpu()
+        gt_pos, gt_rot = target_output['position'][0][seq_id].cpu(), target_output['rotation'][0][seq_id].cpu()
+        full_image_p = input_dict['image_paths'][seq_id + 1][0]
+        ns_color, phy_color, gt_color = 0, 1, 2  # green, blue, orange
+        vis_two_states(vis_env=args.vis_env, obj_name=obj_name, pos1=phy_pos, rot1=phy_rot, pos2=gt_pos, rot2=gt_rot,
+                       full_image=full_image_p, image_name=args.title + '_phy_gt_' + str(data_index) + '_' + str(seq_id),
+                       save_folder=args.vis_f, color1=phy_color, color2=gt_color,
+                       kp_tensor=model.all_objects_keypoint_tensor[obj_name], verbose=True)
+        vis_two_states(vis_env=args.vis_env, obj_name=obj_name, pos1=ns_pos, rot1=ns_rot, pos2=gt_pos, rot2=gt_rot,
+                       full_image=full_image_p, image_name=args.title + '_ns_gt_' + str(data_index) + '_' + str(seq_id),
+                       save_folder=args.vis_f, color1=ns_color, color2=gt_color,
+                       kp_tensor=model.all_objects_keypoint_tensor[obj_name], verbose=True)
+        vis_two_states(vis_env=args.vis_env, obj_name=obj_name, pos1=phy_pos, rot1=phy_rot, pos2=ns_pos, rot2=ns_rot,
+                       full_image=full_image_p, image_name=args.title + '_phy_ns_' + str(data_index) + '_' + str(seq_id),
+                       save_folder=args.vis_f, color1=phy_color, color2=ns_color,
+                       kp_tensor=model.all_objects_keypoint_tensor[obj_name], verbose=True)
+    vis_fn(1)
+    vis_fn(2)
+    vis_fn(3)
+    return
+
+
 # original functions
 def save_image_list_to_gif(image_list, gif_name, gif_dir):
     gif_adr = os.path.join(gif_dir, gif_name)

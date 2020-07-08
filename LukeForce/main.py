@@ -18,26 +18,6 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 def get_dataset(args):
     print("Create training and validation dataset.")
-    # if args.ns:
-    #     train_dataset = NSDataset(obj_name=args.obj_name, root_dir=args.ns_dataset_p, train_val_rate=0.9, all_sequence=args.lstm,
-    #                               train_num=args.train_num, train=True)
-    #     val_dataset = NSDataset(obj_name=args.obj_name, root_dir=args.ns_dataset_p, train_val_rate=0.9, all_sequence=args.lstm,
-    #                             train_num=args.train_num, train=False, data_statistics=train_dataset.data_statistics)
-    #     if train_dataset.collate_fn is None:
-    #         train_loader = torch.utils.data.DataLoader(
-    #             train_dataset, batch_size=args.batch_size,
-    #             shuffle=True, num_workers=args.workers, pin_memory=False)
-    #         val_loader = torch.utils.data.DataLoader(
-    #             val_dataset, batch_size=args.batch_size,
-    #             shuffle=True, num_workers=args.workers, pin_memory=False)
-    #     else:
-    #         train_loader = torch.utils.data.DataLoader(
-    #             train_dataset, batch_size=args.batch_size,
-    #             shuffle=True, num_workers=args.workers, collate_fn=train_dataset.collate_fn, pin_memory=False)
-    #         val_loader = torch.utils.data.DataLoader(
-    #             val_dataset, batch_size=args.batch_size,
-    #             shuffle=True, num_workers=args.workers, collate_fn=train_dataset.collate_fn, pin_memory=False)
-    # else:
     train_dataset = args.dataset(args, environment=None, train=True)
     val_dataset = args.dataset(args, environment=train_dataset.environment, train=False)
     train_loader = torch.utils.data.DataLoader(
@@ -136,7 +116,7 @@ def main():
                 lowest_val_error = val_err
                 torch.save(model.state_dict(), os.path.join(args.save, 'best_model.pytar'.format(i + 1)))
     elif args.mode == 'test' or args.mode == 'testtrain':
-        if args.mode == 'testtrain' or args.save_dataset:
+        if args.mode == 'testtrain':
             val_loader = train_loader
         if args.reload_dir is not None:
             all_saved_models = [f for f in os.listdir(args.reload_dir) if f.endswith('.pytar')]

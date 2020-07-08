@@ -40,6 +40,12 @@ class MultipleObjectWrapper:
                                                                             no_grad=no_grad,
                                                                             return_force_value=return_force_value)
 
+    def get_rgb_for_position_rotation(self, object_state):
+        obj_name = object_state.object_name
+        phy_env = self.list_of_envs[obj_name]
+        rgb_result = phy_env.get_rgb_for_position_rotation()
+        return rgb_result
+
     def close(self):
         for obj in self.object_paths:
             self.list_of_envs[obj].close()

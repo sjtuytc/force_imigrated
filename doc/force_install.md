@@ -37,7 +37,7 @@ pip install -r requirements.txt
 
 ```shell
 # train the seperate NS/FP model.
-python main.py --title v7_first_feature_lstm --gpu-ids 3 --environment PhysicsEnv --model SeperateFPAndNS --dataset DatasetWAugmentation --loss SeperateFPNSLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 --set-gpu-ids-in-env --break-batch 32 --use_gt_cp train
+python main.py --title v7_new_feature_lstm --gpu-ids 3 --environment PhysicsEnv --model SeperateFPAndNS --dataset DatasetWAugmentation --loss SeperateFPNSLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 --set-gpu-ids-in-env --break-batch 32 --use_gt_cp train
 
 # train the joint ns model.
 srun --gres=gpu:2 -w SH-IDC1-10-198-6-147 python main.py --title v5_loss1_only_no_scale --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 0.0 train
@@ -62,7 +62,7 @@ python main.py --title save_gt_force --batch-size 1 --workers 10 --gpu-ids 1 --n
 
 ```shell
 # test joint ns model.
-python main.py --title loss1onlycheck --reload loss1onlycheck.pytar --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 --vis test
+python main.py --title v3_seperate_ns --reload seperate_ns_loss.pytar --gpu-ids 3 --environment PhysicsEnv --model SeperateFPAndNS --dataset DatasetWAugmentation --loss SeperateFPNSLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 --no-strict --set-gpu-ids-in-env test
 
 # test the base model of NS.
 python main.py --title train_ns_v3 --reload model_state.pytar --sequence_length 10 --ns --gpu-ids 0 --number_of_cp 5 --model NSBaseModel --dataset NSDataset --loss StateEstimationLoss --object_list ALL --data DatasetForce --batch-size 1 --break-batch 1 --epochs 1000  --save_frequency 30  --ns_dataset_p NSDatasetV5 --vis test
