@@ -137,7 +137,7 @@ def parse_args(log_info=True, save_log=True):
     # parser.add_argument('--save_dataset', action='store_true')
     # parser.add_argument('--predict_speed', action='store_true')
     parser.add_argument('--use_gt_cp', action='store_true', help='use gt contact points.')
-    # parser.add_argument('--lstm', action='store_true')
+    parser.add_argument('--lstm', action='store_true')
     parser.add_argument('--residual', action='store_true', help='predict residual')
     parser.add_argument('--train_res', action='store_true', help='train resnet feature')
     parser.add_argument('--vis_grad', action='store_true', help='visualize gradients')

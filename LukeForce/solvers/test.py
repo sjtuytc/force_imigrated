@@ -5,7 +5,7 @@ import torch
 from . import metrics
 import tqdm
 import numpy as np
-from utils.visualization_util import vis_two_states, vis_state, compare_vis, get_image_list_for_object_traj
+from utils.visualization_util import vis_two_states, vis_state, compare_vis, get_image_list_for_object_traj, save_image_list
 from utils.tensor_utils import dict_of_tensor_to_cuda
 from utils.data_io import save_into_pkl
 from IPython import embed
@@ -57,11 +57,13 @@ def test_one_epoch(model, loss, data_loader, epoch, args):
             vis_cur_iter = args.vis and i < 20
             if vis_cur_iter:
                 # compare_vis(args, input_dict, target_output, model_output, model)  # compare visualization
-                get_image_list_for_object_traj(output_rotation=model_output['phy_rotation'], output_position=model_output['phy_position'],
-                                               target_rotation=target_output['rotation'], target_position=target_output['position'],
-                                               gt_contact_point=None, initial_position=input_dict['initial_position'][0],
-                                               initial_rotation=input_dict['initial_rotation'][0], object_name=input_dict['object_name'],
-                                               environment=args.vis_env, input_rgb=input_dict['rgb'])
+                img_list = get_image_list_for_object_traj(output_rotation=model_output['phy_rotation'][0], output_position=model_output['phy_position'][0],
+                                                           target_rotation=target_output['rotation'][0], target_position=target_output['position'][0],
+                                                           gt_contact_point=None, initial_position=input_dict['initial_position'][0],
+                                                           initial_rotation=input_dict['initial_rotation'][0], object_name=input_dict['object_name'][0],
+                                                           environment=args.vis_env, input_rgb=input_dict['rgb'][0], ns_position=model_output['ns_position'][0],
+                                                          ns_rotation=model_output['ns_rotation'][0])
+                save_image_list(image_list=img_list, save_name=args.title + str(i), save_dir=args.vis_f)
             loss_time_meter.update((time.time() - before_loss_time) / batch_size, batch_size)
             if args.render:
                 print('loss', loss.local_loss_dict)

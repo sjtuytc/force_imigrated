@@ -37,7 +37,7 @@ pip install -r requirements.txt
 
 ```shell
 # train the seperate NS/FP model.
-python main.py --title v7_new_feature_lstm --gpu-ids 3 --environment PhysicsEnv --model SeperateFPAndNS --dataset DatasetWAugmentation --loss SeperateFPNSLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 --set-gpu-ids-in-env --break-batch 32 --use_gt_cp train
+python main.py --title v7_lstm_first_only --gpu-ids 3 --environment PhysicsEnv --model SeperateFPAndNS --dataset DatasetWAugmentation --loss SeperateFPNSLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 --set-gpu-ids-in-env --break-batch 64 --use_gt_cp train
 
 # train the joint ns model.
 srun --gres=gpu:2 -w SH-IDC1-10-198-6-147 python main.py --title v5_loss1_only_no_scale --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 0.0 train

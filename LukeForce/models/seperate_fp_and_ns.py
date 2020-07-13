@@ -167,7 +167,7 @@ class NeuralForceSimulator(nn.Module):
         super(NeuralForceSimulator, self).__init__()
         self.clean_force = True
         # neural force simulator
-        self.only_first_img_feature = False
+        self.only_first_img_feature = True
         self.vis_grad = args.vis_grad
         self.train_res = args.train_res or self.vis_grad
         self.hidden_size = 512
@@ -181,7 +181,7 @@ class NeuralForceSimulator(nn.Module):
         del self.feature_extractor.fc
         if not self.train_res:
             self.feature_extractor.eval()
-        self.use_lstm = True
+        self.use_lstm = args.lstm
         self.norm_position = False
         if self.use_lstm:
             self.one_ns_layer = NSLSTM(hidden_size=self.hidden_size, layer_norm=False,
@@ -200,7 +200,7 @@ class NeuralForceSimulator(nn.Module):
         if args.gpu_ids != -1:
             for obj, val in self.all_objects_keypoint_tensor.items():
                 self.all_objects_keypoint_tensor[obj] = val.cuda()
-        self.ns_ratio, self.phy_ratio, self.gt_ratio = 1, 1, 1
+        self.ns_ratio, self.phy_ratio, self.gt_ratio = 1, 1, 0
         total_r = self.ns_ratio + self.phy_ratio + self.gt_ratio
         self.ns_ratio, self.phy_ratio, self.gt_ratio = self.ns_ratio / total_r, self.phy_ratio / total_r, \
                                                        self.gt_ratio / total_r

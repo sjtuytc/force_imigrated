@@ -110,8 +110,28 @@ def compare_vis(args, input_dict, target_output, model_output, model, data_index
     return
 
 
+def save_image_list(image_list, save_name, save_dir):
+    # save image_list to disk.
+    save_image_list_to_gif(image_list, gif_name=save_name, gif_dir=save_dir)
+    save_overlay_image_list(image_list, save_name, save_dir)
+    return
+
+
+def save_overlay_image_list(image_list, save_name, save_dir):
+    seq_len, cols, w, h, c = image_list.shape
+    pallet = torch.zeros((seq_len, w, h * cols, c))
+    for col_ind in range(cols):
+        pallet[:, :, col_ind * h: (col_ind + 1) * h, :] = image_list[:, col_ind]
+    final_pallet = torch.sum(pallet, dim=0) / seq_len * 3
+    final_pallet = np.array(final_pallet.cpu()).transpose(1, 0, 2)
+    save_image_to_disk(final_pallet, save_name + ".png", save_dir, verbose=True)
+    return
+
+
 # original functions
 def save_image_list_to_gif(image_list, gif_name, gif_dir):
+    if 'gif' not in gif_name:
+        gif_name = gif_name + '.gif'
     gif_adr = os.path.join(gif_dir, gif_name)
 
     seq_len, cols, w, h, c = image_list.shape
@@ -271,22 +291,28 @@ def get_image_list_for_keypoints(full_target_keypoints, full_output_keypoints, f
 
 def get_image_list_for_object_traj(output_rotation, output_position, target_rotation, target_position, gt_contact_point,
                                    initial_rotation, initial_position, object_name, environment, input_rgb,
-                                   output_contact_point=None):
+                                   output_contact_point=None, ns_rotation=None, ns_position=None):
     env_state = EnvState(position=initial_position, rotation=initial_rotation, object_name=object_name)
 
     initial_image = environment.get_rgb_for_position_rotation(object_state=env_state)
 
-    initial_double_image = np.stack([initial_image, initial_image], axis=0)  # because we need it both for target and output
-
-    all_images = [initial_double_image]
+    if ns_rotation is None:
+        initial_images = np.stack([initial_image, initial_image], axis=0)  # because we need it both for target and output
+    else:
+        initial_images = np.stack([initial_image, initial_image, initial_image], axis=0)
+    all_images = [initial_images]
     for seq_ind in range(output_rotation.shape[0]):
         output_env_state = EnvState(position=output_position[seq_ind], rotation=output_rotation[seq_ind], object_name=object_name)
         output_image = environment.get_rgb_for_position_rotation(object_state=output_env_state, contact_point=output_contact_point)  # add force viz, forces_poc=force_visualization[seq_ind])
         target_env_state = EnvState(position=target_position[seq_ind], rotation=target_rotation[seq_ind], object_name=object_name)
         target_image = environment.get_rgb_for_position_rotation(object_state=target_env_state, contact_point=gt_contact_point)
-
-        # combine images
-        combined_images = np.stack([target_image, output_image], axis=0)
+        if ns_rotation is not None:
+            ns_env_state = EnvState(position=ns_position[seq_ind], rotation=ns_rotation[seq_ind], object_name=object_name)
+            ns_image = environment.get_rgb_for_position_rotation(object_state=ns_env_state, contact_point=output_contact_point)
+            combined_images = np.stack([target_image, output_image, ns_image], axis=0)
+        else:
+            # combine images
+            combined_images = np.stack([target_image, output_image], axis=0)
 
         all_images.append(combined_images)
 
