@@ -10,6 +10,7 @@ from torchvision.models.resnet import resnet18
 from solvers import metrics
 from utils.environment_util import NoGradEnvState, nograd_envstate_from_tensor
 from utils.projection_utils import get_keypoint_projection, get_all_objects_keypoint_tensors
+from IPython import embed
 
 
 def forward_resnet_feature(x, feature_extractor, train_res):
@@ -165,7 +166,7 @@ class ForcePredictor(nn.Module):
 class NeuralForceSimulator(nn.Module):
     def __init__(self, args):
         super(NeuralForceSimulator, self).__init__()
-        self.clean_force = True
+        self.clean_force = False
         # neural force simulator
         self.only_first_img_feature = True
         self.vis_grad = args.vis_grad
@@ -263,6 +264,7 @@ class NeuralForceSimulator(nn.Module):
             phy_positions.append(next_phy_state_tensor[:3].to(dev))
             phy_rotations.append(next_phy_state_tensor[3:7].to(dev))
 
+            embed()
             # step neural force simulator
             # cur_obj_ns_layer = self.ns_layer[object_name]
             # predicted_state_tensor = cur_obj_ns_layer(ns_state_tensor, force, contact_point_as_input)
@@ -278,7 +280,7 @@ class NeuralForceSimulator(nn.Module):
                 if seq_ind == 0:
                     ns_hidden, ns_cell = None, None
                 next_ns_state_tensor, ns_hidden, ns_cell = self.one_ns_layer(ns_state_tensor[:, :7], cleaned_force, cleaned_cp,
-                                                                                 current_frame_feature, ns_hidden, ns_cell)
+                                                                             current_frame_feature, ns_hidden, ns_cell)
             else:
                 next_ns_state_tensor = self.one_ns_layer(ns_state_tensor[:, :7], cleaned_force, cleaned_cp,
                                                          current_frame_feature)

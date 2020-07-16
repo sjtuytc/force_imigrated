@@ -4,12 +4,17 @@ import torch
 import math
 
 
+def w_first_to_w_last(w_first_quat):
+    w_last_quat = torch.cat((w_first_quat[1:], w_first_quat[0].unsqueeze(0)))
+    return w_last_quat
+
+
 def quaternion_to_euler_angle(quaternion, degree=True):
     '''
     Transform quaternion to euler angles.
     :param quaternion: in [w, x, y, z] format.
     :param degree: whether the result should be represented in degree.
-    :return: euler angles.
+    :return: euler angles, in xyz format.
     '''
     if type(quaternion) == torch.Tensor:
         quaternion = quaternion.cpu()

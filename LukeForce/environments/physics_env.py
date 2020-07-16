@@ -11,6 +11,7 @@ from utils.obj_util import obtain_all_vertices_from_obj
 from utils.quaternion_util import quaternion_to_rotation_matrix
 from utils.environment_util import EnvState, ForceValOnly, NoGradEnvState, build_env_state_from_dict
 from utils.constants import OBJECT_TO_SCALE, CONTACT_POINT_MASK_VALUE, GRAVITY_VALUE
+from IPython import embed
 
 
 class PhysicsEnv(BaseBulletEnv):
@@ -28,7 +29,7 @@ class PhysicsEnv(BaseBulletEnv):
         self.object_path = object_path
         self.continue_loading = False
         self.pybullet_data_path = pybullet_data.getDataPath()
-        self.time_step_length = 1 / 240.
+        self.time_step_length = 1 / 240.  # this is the default pybullet setting
         self.number_of_steps_per_image = int(1 / self.fps / self.time_step_length)
         self.cameraEyePosition = np.array([0, 0, 0])
         self.camera_gaze_direction = np.array([0, 0, 1])
@@ -41,7 +42,7 @@ class PhysicsEnv(BaseBulletEnv):
     def reset(self):
         self.terminated = 0
         self._p.resetSimulation()
-        self._p.setRealTimeSimulation(0)
+        self._p.setRealTimeSimulation(0)  # this is essential for apply_external_force
         self._p.setPhysicsEngineParameter(numSolverIterations=150)  # , enableConeFriction=0)
         self._p.setTimeStep(self.time_step_length)
         if self.gravity:
@@ -92,7 +93,7 @@ class PhysicsEnv(BaseBulletEnv):
             return 0.5, projected_force
         else:
             return 0, force_value
-            # return 0, None. we don't return None because it would cause error.
+            # return 0, force_value. We don't return None because it would cause error.
 
     def initiate_object(self, object_path):
         unique_id = self._p.loadURDF(object_path, basePosition=[0.5, 0.5, 0.5], baseOrientation=[1, 0, 0, 0],
@@ -176,6 +177,15 @@ class PhysicsEnv(BaseBulletEnv):
 
     def get_rotation_mat(self, state):
         return quaternion_to_rotation_matrix(state.rotation.view(1, 4)).squeeze(0)
+
+    def get_euler_angles(self, quaternion=None, object_num=None):
+        if quaternion is None:
+            if object_num is None:
+                object_num = self.object_of_interest_id
+            _, quaternion = self._p.getBasePositionAndOrientation(object_num)
+        euler = self._p.getEulerFromQuaternion(quaternion)
+        # in zyx format
+        return euler
 
     def get_current_state(self, object_num=None, no_grad=False):
         if object_num is None:
@@ -282,6 +292,17 @@ class PhysicsEnv(BaseBulletEnv):
             return current_state, list_of_force_success, list_of_force_location, list_of_applied_forces
         else:
             return current_state, list_of_force_success, list_of_force_location
+
+    def init_location_and_apply_torque(self, torques, initial_state, object_num=None):
+        if object_num is None:
+            object_num = self.object_of_interest_id
+        self.update_object_transformations(object_state=initial_state, object_num=object_num)
+        self._p.applyExternalTorque(objectUniqueId=object_num, linkIndex=-1,
+                                    torqueObj=torques, flags=self._p.WORLD_FRAME)
+        for step_number in range(self.number_of_steps_per_image):
+            self.step()  # Do not remove this
+        current_state = self.get_current_state(no_grad=True)
+        return current_state
 
     def apply_force_to_obj(self, force_to_apply, contact_point, surface_normal, object_num=None):
         if object_num is None:

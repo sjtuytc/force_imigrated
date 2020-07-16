@@ -37,7 +37,14 @@ pip install -r requirements.txt
 
 ```shell
 # train the seperate NS/FP model.
-python main.py --title v7_lstm_first_only --gpu-ids 3 --environment PhysicsEnv --model SeperateFPAndNS --dataset DatasetWAugmentation --loss SeperateFPNSLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 --set-gpu-ids-in-env --break-batch 64 --use_gt_cp train
+srun --gres=gpu:1 -p $PARTITION -w SH-IDC1-10-198-6-124 python main.py --title v7_mlp_first_only --gpu-ids 3 --environment PhysicsEnv --model SeperateFPAndNS --dataset DatasetWAugmentation --loss SeperateFPNSLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 1.0 --set-gpu-ids-in-env --break-batch 64 --use_gt_cp train
+
+# optimize force only
+python main.py --title v7_optimize_force_only --reload seperate_first_feature.pytar --gpu-ids 3 --environment PhysicsEnv --model SeperateFPAndNS --dataset DatasetWAugmentation --loss SeperateFPNSLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 0.0 --set-gpu-ids-in-env --break-batch 64 --use_gt_cp train
+
+# test physical environment
+export PARTITION=vc_research
+srun --gres=gpu:1 -p $PARTITION -w SH-IDC1-10-198-6-124 python debug/test_physics_env.py --title joint_training --sequence_length 10 --gpu-ids -1 --number_of_cp 5 --model SeparateTowerModel --dataset DatasetWAugmentation --loss KPProjectionCPPredictionLoss --object_list ALL --data DatasetForce --batch-size 1 train
 
 # train the joint ns model.
 srun --gres=gpu:2 -w SH-IDC1-10-198-6-147 python main.py --title v5_loss1_only_no_scale --gpu-ids 0 --environment PhysicsEnv --model JointNS --dataset DatasetWAugmentation --loss JointNSProjectionLoss --object_list ALL --data DatasetForce --batch-size 1 --loss1_w 1.0 --loss2_w 0.0 train
